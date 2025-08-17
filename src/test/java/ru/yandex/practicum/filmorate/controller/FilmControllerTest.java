@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 // 1. Проверка, что добавляется фильм.
 // 2. Проверка, что не добавляет фильм с пустым названием.
 // 3. Проверка, что не добавляет фильм с описанием длиннее 200 символов.
+// 3.1 Проверка, что не добавляет фильм с описанием ровно 200 символов.
 // 4. Проверка, что не добавляет фильм с датой выхода раньше 28.12.1895.
 // 5. Проверка, что не добавляет фильм с нулевой или отрицательной длительностью.
 // 6. Проверка, что сервер отдает список фильмов корректно.
@@ -93,6 +94,21 @@ class FilmControllerTest {
 
         ResponseEntity<Film> response = testRestTemplate.postForEntity("/films", film, Film.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @DisplayName("3.1 Проверка, что добавляет фильм с описанием ровно 200 символов.")
+    @Test
+    void shouldRejectFilmIfDescription200() {
+        String longDescription = "x".repeat(200);
+        Film film = Film.builder()
+                .name("Film1")
+                .description(longDescription)
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(Duration.ofMinutes(120))
+                .build();
+
+        ResponseEntity<Film> response = testRestTemplate.postForEntity("/films", film, Film.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @DisplayName("4. Проверка, что не добавляет фильм с датой выхода раньше 28.12.1895.")
