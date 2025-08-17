@@ -37,4 +37,9 @@ public class FilmRepository {
     public Film deleteById(Long id) {
         return films.remove(id);
     }
+
+    public void clear() {
+        films.clear();
+        lastId = 1L;
+    }
 }
