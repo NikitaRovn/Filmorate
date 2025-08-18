@@ -24,17 +24,17 @@ public class FilmController {
     public FilmController(FilmService filmService) {
         this.filmService = filmService;
     }
-    
+
     @GetMapping
     public List<Film> getAllFilms() {
         return filmService.getAllFilms();
     }
-    
+
     @GetMapping("/{id}")
     public Film getFilm(@PathVariable Long id) {
         return filmService.getFilm(id);
     }
-    
+
     @PostMapping
     public Film addFilm(@Valid @RequestBody FilmRegisterDto filmRegisterDto) {
         return filmService.addFilm(filmRegisterDto);
