@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,6 +9,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
+import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 
@@ -33,13 +36,18 @@ public class UserController {
     }
 
     @PostMapping
-    public User registerUser(@RequestBody User newUser) {
-        return userService.registerUser(newUser);
+    public User registerUser(@Valid @RequestBody UserRegisterDto userRegisterDto) {
+        return userService.registerUser(userRegisterDto);
     }
 
-    @PutMapping
-    public User updateUser(@RequestBody User updatedUser) {
-        return userService.updateUser(updatedUser);
+//    @PutMapping
+//    public User updateUser(@Valid @RequestBody UserRegisterDto updatedUserDto) {
+//        return userService.updateUser(updatedUserDto);
+//    }
+
+    @PutMapping("/{id}")
+    public User updateUser(@Valid @RequestBody UserUpdateDto userUpdateDto, @PathVariable Long id) {
+        return userService.updateUser(userUpdateDto, id);
     }
 
     @DeleteMapping("/{id}")
