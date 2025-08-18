@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import ru.yandex.practicum.filmorate.dto.ValidationErrorResponse;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.repository.UserRepository;
 
@@ -22,8 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 // 3. Проверка, что не регистрирует пользователя с пробелом в логине.
 // 4. Проверка, что не регистрирует пользователя, если почта не содержит @.
 // 5. Проверка, что не регистрирует пользователя, если логин пустой.
+// 5.1 Проверка, что не регистрирует пользователя, если логин не передан.
 // 6. Проверка, что пользователя не регистрирует, если дата рождения позже текущей.
 // 7. Проверка, что сервер отдает список пользователей корректно.
+// 8. Проверка, что сервер обновляет пользователя корректно.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -63,6 +66,7 @@ class UserControllerTest {
                 .usingRecursiveComparison()
                 .ignoringFields("id")
                 .isEqualTo(user);
+
         assertThat(userRepository.findAll()).hasSize(1);
     }
 
@@ -95,12 +99,15 @@ class UserControllerTest {
                 .birthday(LocalDate.of(2000, 1, 1))
                 .build();
 
-        ResponseEntity<User> response = testRestTemplate.postForEntity(
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
                 "/users",
                 userBadLogin,
-                User.class);
+                ValidationErrorResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors())
+                .anyMatch(e -> e.getField().equals("login"));
     }
 
     @DisplayName("4. Проверка, что не регистрирует пользователя, если почта не содержит @.")
@@ -113,12 +120,15 @@ class UserControllerTest {
                 .birthday(LocalDate.of(2000, 1, 1))
                 .build();
 
-        ResponseEntity<User> response = testRestTemplate.postForEntity(
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
                 "/users",
                 userBadEmail,
-                User.class);
+                ValidationErrorResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors())
+                .anyMatch(e -> e.getField().equals("email"));
     }
 
     @DisplayName("5. Проверка, что не регистрирует пользователя, если логин пустой.")
@@ -131,12 +141,34 @@ class UserControllerTest {
                 .birthday(LocalDate.of(2000, 1, 1))
                 .build();
 
-        ResponseEntity<User> response = testRestTemplate.postForEntity(
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
                 "/users",
                 userNoLogin,
-                User.class);
+                ValidationErrorResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors())
+                .anyMatch(e -> e.getField().equals("login"));
+    }
+
+    @DisplayName("5.1 Проверка, что не регистрирует пользователя, если логин не передан.")
+    @Test
+    void shouldRejectRegisterUserIfLoginIsNull() {
+        User userNoLogin = User.builder()
+                .name("Name1")
+                .email("Email1@gmail.com")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
+                "/users",
+                userNoLogin,
+                ValidationErrorResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors()).anyMatch(e -> e.getField().equals("login"));
     }
 
     @DisplayName("6. Проверка, что пользователя не регистрирует, если дата рождения позже текущей.")
@@ -149,12 +181,15 @@ class UserControllerTest {
                 .birthday(LocalDate.of(2100, 1, 1))
                 .build();
 
-        ResponseEntity<User> response = testRestTemplate.postForEntity(
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
                 "/users",
                 userBadBirthday,
-                User.class);
+                ValidationErrorResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors())
+                .anyMatch(e -> e.getField().equals("birthday"));
     }
 
     @DisplayName("7. Проверка, что сервер отдает список пользователей корректно.")
@@ -188,5 +223,38 @@ class UserControllerTest {
         User[] users = response.getBody();
 
         assertThat(users).hasSize(2);
+    }
+
+    @DisplayName("8. Проверка, что сервер обновляет пользователя корректно.")
+    @Test
+    void shouldUpdateUserData() {
+        User userOld = User.builder()
+                .name("NameOld")
+                .email("EmailOld@gmail.com")
+                .login("LoginOld")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response = testRestTemplate.postForEntity(
+                "/users",
+                userOld,
+                User.class);
+
+        Long id = response.getBody().getId();
+
+        User userNew = User.builder()
+                .name("NameNew")
+                .email("EmailNew@gmail.com")
+                .login("LoginNew")
+                .birthday(LocalDate.of(2010, 1, 1))
+                .build();
+
+        testRestTemplate.put("/users/{id}", userNew, id);
+
+        response = testRestTemplate.getForEntity("/users/{id}", User.class, id);
+
+        userNew.setId(id);
+
+        assertThat(userNew).usingRecursiveComparison().isEqualTo(response.getBody());
     }
 }

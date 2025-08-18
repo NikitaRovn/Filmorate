@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import ru.yandex.practicum.filmorate.dto.ValidationErrorResponse;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.repository.FilmRepository;
 
@@ -23,7 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 // 3. Проверка, что не добавляет фильм с описанием длиннее 200 символов.
 // 3.1 Проверка, что не добавляет фильм с описанием ровно 200 символов.
 // 4. Проверка, что не добавляет фильм с датой выхода раньше 28.12.1895.
-// 5. Проверка, что не добавляет фильм с нулевой или отрицательной длительностью.
+// 5. Проверка, что не добавляет фильм с нулевой.
+// 5.1 Проверка, что не добавляет фильм с отрицательной длительностью.
 // 6. Проверка, что сервер отдает список фильмов корректно.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -59,6 +61,7 @@ class FilmControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         Film savedFilm = response.getBody();
+
         assertThat(savedFilm)
                 .usingRecursiveComparison()
                 .ignoringFields("id")
@@ -77,14 +80,23 @@ class FilmControllerTest {
                 .duration(Duration.ofMinutes(120))
                 .build();
 
-        ResponseEntity<Film> response = testRestTemplate.postForEntity("/films", film, Film.class);
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
+                "/films",
+                film,
+                ValidationErrorResponse.class);
+
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors()).anyMatch(
+                e -> e.getField().equals("name")
+        );
     }
 
     @DisplayName("3. Проверка, что не добавляет фильм с описанием длиннее 200 символов.")
     @Test
     void shouldRejectFilmIfDescriptionTooLong() {
         String longDescription = "x".repeat(201);
+
         Film film = Film.builder()
                 .name("Film1")
                 .description(longDescription)
@@ -92,13 +104,21 @@ class FilmControllerTest {
                 .duration(Duration.ofMinutes(120))
                 .build();
 
-        ResponseEntity<Film> response = testRestTemplate.postForEntity("/films", film, Film.class);
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
+                "/films",
+                film,
+                ValidationErrorResponse.class);
+
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors()).anyMatch(
+                e -> e.getField().equals("description")
+        );
     }
 
     @DisplayName("3.1 Проверка, что добавляет фильм с описанием ровно 200 символов.")
     @Test
-    void shouldRejectFilmIfDescription200() {
+    void shouldAddFilmIfDescription200Chars() {
         String longDescription = "x".repeat(200);
         Film film = Film.builder()
                 .name("Film1")
@@ -107,7 +127,11 @@ class FilmControllerTest {
                 .duration(Duration.ofMinutes(120))
                 .build();
 
-        ResponseEntity<Film> response = testRestTemplate.postForEntity("/films", film, Film.class);
+        ResponseEntity<Film> response = testRestTemplate.postForEntity(
+                "/films",
+                film,
+                Film.class);
+
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
@@ -121,32 +145,57 @@ class FilmControllerTest {
                 .duration(Duration.ofMinutes(120))
                 .build();
 
-        ResponseEntity<Film> response = testRestTemplate.postForEntity("/films", film, Film.class);
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
+                "/films",
+                film,
+                ValidationErrorResponse.class);
+
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors())
+                .anyMatch(e -> e.getField().equals("releaseDate"));
     }
 
-    @DisplayName("5. Проверка, что не добавляет фильм с нулевой или отрицательной длительностью.")
+    @DisplayName("5. Проверка, что не добавляет фильм с нулевой.")
     @Test
-    void shouldRejectFilmIfDurationInvalid() {
-        Film filmZero = Film.builder()
+    void shouldRejectFilmIfDurationZero() {
+        Film film = Film.builder()
                 .name("Film1")
                 .description("Description1")
                 .releaseDate(LocalDate.of(2000, 1, 1))
                 .duration(Duration.ZERO)
                 .build();
 
-        ResponseEntity<Film> response = testRestTemplate.postForEntity("/films", filmZero, Film.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
+                "/films",
+                film,
+                ValidationErrorResponse.class);
 
-        Film filmNegative = Film.builder()
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors())
+                .anyMatch(e -> e.getField().equals("duration"));
+    }
+
+    @DisplayName("5.1 Проверка, что не добавляет фильм с отрицательной длительностью.")
+    @Test
+    void shouldRejectFilmIfDurationNegative() {
+        Film film = Film.builder()
                 .name("Film2")
                 .description("Description2")
                 .releaseDate(LocalDate.of(2000, 1, 1))
                 .duration(Duration.ofMinutes(-10))
                 .build();
 
-        response = testRestTemplate.postForEntity("/films", filmNegative, Film.class);
+        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
+                "/films",
+                film,
+                ValidationErrorResponse.class);
+
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors()).isNotEmpty();
+        assertThat(response.getBody().getErrors())
+                .anyMatch(e -> e.getField().equals("duration"));
     }
 
     @DisplayName("6. Проверка, что сервер отдает список фильмов корректно.")

@@ -91,7 +91,7 @@
             <property name="tokens" value="METHOD_REF"/>
         </module>
         <module name="PackageName">
-            <!--<property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>-->
+            <!--<property name="format" restrictionDate="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>-->
             <message key="name.invalidPattern" value="Package name ''{0}'' must match pattern ''{1}''."/>
         </module>
         <module name="TypeName">
@@ -159,12 +159,12 @@
             <metadata name="net.sf.eclipsecs.core.lastEnabledSeverity" value="inherit"/>
         </module>
         <!--		<module name="CustomImportOrder">-->
-        <!--			<property name="customImportOrderRules" value="STATIC###STANDARD_JAVA_PACKAGE###SPECIAL_IMPORTS###THIRD_PARTY_PACKAGE"/>-->
-        <!--			<property name="standardPackageRegExp" value="^java\."/>-->
-        <!--			<property name="specialImportsRegExp" value="^javax\."/>-->
-        <!--			<property name="thirdPartyPackageRegExp" value="^org\."/>-->
-        <!--			<property name="sortImportsInGroupAlphabetically" value="true"/>-->
-        <!--			<property name="separateLineBetweenGroups" value="true"/>-->
+        <!--			<property name="customImportOrderRules" restrictionDate="STATIC###STANDARD_JAVA_PACKAGE###SPECIAL_IMPORTS###THIRD_PARTY_PACKAGE"/>-->
+        <!--			<property name="standardPackageRegExp" restrictionDate="^java\."/>-->
+        <!--			<property name="specialImportsRegExp" restrictionDate="^javax\."/>-->
+        <!--			<property name="thirdPartyPackageRegExp" restrictionDate="^org\."/>-->
+        <!--			<property name="sortImportsInGroupAlphabetically" restrictionDate="true"/>-->
+        <!--			<property name="separateLineBetweenGroups" restrictionDate="true"/>-->
         <!--		</module>-->
         <module name="UnusedImports"/>
         <module name="MethodParamPad"/>
