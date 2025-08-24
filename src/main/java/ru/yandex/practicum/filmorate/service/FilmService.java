@@ -5,12 +5,9 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.FilmRegisterDto;
 import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
-import ru.yandex.practicum.filmorate.exception.film.FilmValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.repository.FilmRepository;
 
-import java.time.Duration;
-import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -25,20 +22,20 @@ public class FilmService {
     public Film addFilm(FilmRegisterDto filmRegisterDto) {
         log.trace("Начало метода addFilm, на входе фильм: {}", filmRegisterDto);
 
-        // releaseDate validator
-        LocalDate releaseDate = filmRegisterDto.getReleaseDate();
-        LocalDate birthdayOfFilms = LocalDate.of(1895, 12, 28);
-        if (releaseDate.isBefore(birthdayOfFilms)) {
-            log.warn("Провал валидации поля releaseDate: вышел раньше первого фильма.");
-            throw new FilmValidationException("Дата выхода фильма не может быть раньше дня рождения кино (28.12.1985).");
-        }
+//        // releaseDate validator
+//        LocalDate releaseDate = filmRegisterDto.getReleaseDate();
+//        LocalDate birthdayOfFilms = LocalDate.of(1895, 12, 28);
+//        if (releaseDate.isBefore(birthdayOfFilms)) {
+//            log.warn("Провал валидации поля releaseDate: вышел раньше первого фильма.");
+//            throw new FilmValidationException("Дата выхода фильма не может быть раньше дня рождения кино (28.12.1985).");
+//        }
 
-        // duration validator
-        Duration duration = filmRegisterDto.getDuration();
-        if (duration.isNegative() || duration.isZero()) {
-            log.warn("Провал валидации поля duration: меньше или равно нулю.");
-            throw new FilmValidationException("Длительность фильма должна быть больше нуля.");
-        }
+//        // duration validator
+//        Duration duration = filmRegisterDto.getDuration();
+//        if (duration.isNegative() || duration.isZero()) {
+//            log.warn("Провал валидации поля duration: меньше или равно нулю.");
+//            throw new FilmValidationException("Длительность фильма должна быть больше нуля.");
+//        }
 
         Film film = Film.builder()
                 .name(filmRegisterDto.getName())
@@ -56,7 +53,7 @@ public class FilmService {
     public Film getFilm(Long id) {
         Film film = filmRepository.findById(id);
         if (film == null) {
-            throw new FilmNotFoundException("Фильм с id: " + id + " не существует.");
+            throw new FilmNotFoundException(id);
         }
         return film;
     }
@@ -70,7 +67,7 @@ public class FilmService {
         Film film = filmRepository.findById(id);
         if (film == null) {
             log.warn("Попытка обновить данные фильма, фильм не найден, id: {}", id);
-            throw new FilmNotFoundException("Фильм с id: " + id + " не существует.");
+            throw new FilmNotFoundException(id);
         }
         log.debug("Начинается обновление фильма: {}, id: {}", filmUpdateDto, id);
         film.setName(filmUpdateDto.getName());
@@ -88,7 +85,7 @@ public class FilmService {
         Film film = filmRepository.findById(id);
         if (film == null) {
             log.warn("Попытка удалить фильм, фильм не найден, id: {}", id);
-            throw new FilmNotFoundException("Фильм с id: " + id + " не существует.");
+            throw new FilmNotFoundException(id);
         }
         log.debug("Начинается удаление фильма с id: {}", id);
         Film deletedFilm = filmRepository.deleteById(id);

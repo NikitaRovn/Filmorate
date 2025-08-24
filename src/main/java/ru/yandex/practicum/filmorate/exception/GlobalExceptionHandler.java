@@ -9,40 +9,29 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.yandex.practicum.filmorate.dto.ErrorResponse;
 import ru.yandex.practicum.filmorate.dto.ValidationErrorResponse;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
-import ru.yandex.practicum.filmorate.exception.film.FilmValidationException;
 import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
-import ru.yandex.practicum.filmorate.exception.user.UserValidationException;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(UserValidationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleUserValidationException(UserValidationException exception) {
-        return Map.of("error", exception.getMessage());
-    }
-
     @ExceptionHandler(UserNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public Map<String, String> handleUserNotFoundException(UserNotFoundException exception) {
-        return Map.of("error", exception.getMessage());
-    }
+    public ValidationErrorResponse handleUserNotFoundException(UserNotFoundException e) {
+        List<ErrorResponse> errors = e.getErrors().stream().toList();
 
-    @ExceptionHandler(FilmValidationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleFilmValidationException(FilmValidationException exception) {
-        return Map.of("error", exception.getMessage());
+        return new ValidationErrorResponse(errors);
     }
 
     @ExceptionHandler(FilmNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public Map<String, String> handleFilmNotFoundException(FilmNotFoundException exception) {
-        return Map.of("error", exception.getMessage());
+    public ValidationErrorResponse handleFilmNotFoundException(FilmNotFoundException e) {
+        List<ErrorResponse> errors = e.getErrors().stream().toList();
+
+        return new ValidationErrorResponse(errors);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -56,6 +45,7 @@ public class GlobalExceptionHandler {
         List<ErrorResponse> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(f -> new ErrorResponse(f.getField(), f.getDefaultMessage()))
                 .collect(Collectors.toList());
+
         return new ValidationErrorResponse(errors);
     }
 }

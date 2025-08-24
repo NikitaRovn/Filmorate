@@ -38,7 +38,7 @@ public class UserService {
     public User getUser(Long id) {
         User user = userRepository.findById(id);
         if (user == null) {
-            throw new UserNotFoundException("Пользователя с id: " + id + " не существует.");
+            throw new UserNotFoundException(id);
         }
         return user;
     }
@@ -52,7 +52,7 @@ public class UserService {
         User user = userRepository.findById(id);
         if (user == null) {
             log.warn("Попытка обновить данные пользователя, пользователь не найден, id: {}", id);
-            throw new UserNotFoundException("Пользователя с id: " + id + " не существует.");
+            throw new UserNotFoundException(id);
         }
         log.debug("Начинается обновление пользователя: {}", user);
         user.setName(userUpdateDto.getName());
@@ -70,7 +70,7 @@ public class UserService {
         User user = userRepository.findById(id);
         if (user == null) {
             log.warn("Попытка удалить пользователя, пользователь не найден, id: {}", id);
-            throw new UserNotFoundException("Пользователя с id: " + id + " не существует.");
+            throw new UserNotFoundException(id);
         }
         log.debug("Начинается удаление пользователя с id: {}", id);
         User deletedUser = userRepository.deleteById(id);
