@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
 import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
 import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
+import ru.yandex.practicum.filmorate.logging.LogMessages;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.repository.UserRepository;
 
@@ -20,7 +21,7 @@ public class UserService {
     }
 
     public User registerUser(UserRegisterDto userRegisterDto) {
-        log.trace("Начало метода registerUser, на входе пользователь: {}", userRegisterDto);
+        log.trace(LogMessages.USER_ADD, userRegisterDto);
 
         User user = User.builder()
                 .login(userRegisterDto.getLogin())
@@ -29,9 +30,9 @@ public class UserService {
                 .name(userRegisterDto.getName() == null || userRegisterDto.getName().isBlank() ? userRegisterDto.getLogin() : userRegisterDto.getName())
                 .build();
 
-        log.debug("Начинается сохранение пользователя: {}", user);
+        log.debug(LogMessages.USER_SAVE_STARTED, user);
         User registeredUser = userRepository.save(user);
-        log.info("Пользователь успешно сохранен и возвращен: {}", registeredUser);
+        log.info(LogMessages.USER_SAVE_SUCCESS, registeredUser);
         return registeredUser;
     }
 
@@ -48,32 +49,32 @@ public class UserService {
     }
 
     public User updateUser(UserUpdateDto userUpdateDto, Long id) {
-        log.trace("Начало метода updateUser, на входе пользователь: {}, id: {}", userUpdateDto, id);
+        log.trace(LogMessages.USER_UPDATE, userUpdateDto);
         User user = userRepository.findById(id);
         if (user == null) {
-            log.warn("Попытка обновить данные пользователя, пользователь не найден, id: {}", id);
+            log.warn(LogMessages.USER_UPDATE_NOT_FOUND, id);
             throw new UserNotFoundException(id);
         }
-        log.debug("Начинается обновление пользователя: {}", user);
+        log.debug(LogMessages.USER_UPDATE_STARTED, id);
         user.setName(userUpdateDto.getName());
         user.setLogin(userUpdateDto.getLogin());
         user.setBirthday(userUpdateDto.getBirthday());
         user.setEmail(userUpdateDto.getEmail());
 
         User updatedUser = userRepository.update(user);
-        log.info("Пользователь успешно обновлен и возвращен: {}", updatedUser);
+        log.info(LogMessages.USER_UPDATE_SUCCESS, updatedUser);
         return updatedUser;
     }
 
     public void deleteUser(Long id) {
-        log.trace("Начало метода deleteUser, на входе пользователь с id: {}", id);
+        log.trace(LogMessages.USER_DELETE, id);
         User user = userRepository.findById(id);
         if (user == null) {
-            log.warn("Попытка удалить пользователя, пользователь не найден, id: {}", id);
+            log.warn(LogMessages.USER_DELETE_NOT_FOUND, id);
             throw new UserNotFoundException(id);
         }
-        log.debug("Начинается удаление пользователя с id: {}", id);
+        log.debug(LogMessages.USER_DELETE_STARTED, id);
         User deletedUser = userRepository.deleteById(id);
-        log.info("Пользователь успешно удален и возвращен: {}", deletedUser);
+        log.info(LogMessages.USER_DELETE_SUCCESS, deletedUser);
     }
 }

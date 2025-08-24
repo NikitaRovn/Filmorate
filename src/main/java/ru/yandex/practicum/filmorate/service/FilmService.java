@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.FilmRegisterDto;
 import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
+import ru.yandex.practicum.filmorate.logging.LogMessages;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.repository.FilmRepository;
 
@@ -20,22 +21,7 @@ public class FilmService {
     }
 
     public Film addFilm(FilmRegisterDto filmRegisterDto) {
-        log.trace("Начало метода addFilm, на входе фильм: {}", filmRegisterDto);
-
-//        // releaseDate validator
-//        LocalDate releaseDate = filmRegisterDto.getReleaseDate();
-//        LocalDate birthdayOfFilms = LocalDate.of(1895, 12, 28);
-//        if (releaseDate.isBefore(birthdayOfFilms)) {
-//            log.warn("Провал валидации поля releaseDate: вышел раньше первого фильма.");
-//            throw new FilmValidationException("Дата выхода фильма не может быть раньше дня рождения кино (28.12.1985).");
-//        }
-
-//        // duration validator
-//        Duration duration = filmRegisterDto.getDuration();
-//        if (duration.isNegative() || duration.isZero()) {
-//            log.warn("Провал валидации поля duration: меньше или равно нулю.");
-//            throw new FilmValidationException("Длительность фильма должна быть больше нуля.");
-//        }
+        log.trace(LogMessages.FILM_ADD, filmRegisterDto);
 
         Film film = Film.builder()
                 .name(filmRegisterDto.getName())
@@ -44,9 +30,9 @@ public class FilmService {
                 .duration(filmRegisterDto.getDuration())
                 .build();
 
-        log.debug("Начинается сохранение фильма: {}", film);
+        log.debug(LogMessages.FILM_SAVE_STARTED, film);
         Film savedFilm = filmRepository.save(film);
-        log.info("Фильм успешно сохранен и возвращен: {}", savedFilm);
+        log.info(LogMessages.FILM_SAVE_SUCCESS, savedFilm);
         return savedFilm;
     }
 
@@ -63,32 +49,32 @@ public class FilmService {
     }
 
     public Film updateFilm(FilmUpdateDto filmUpdateDto, Long id) {
-        log.trace("Начало метода updateFilm, на входе фильм: {}", filmUpdateDto);
+        log.trace(LogMessages.FILM_UPDATE, filmUpdateDto);
         Film film = filmRepository.findById(id);
         if (film == null) {
-            log.warn("Попытка обновить данные фильма, фильм не найден, id: {}", id);
+            log.warn(LogMessages.FILM_UPDATE_NOT_FOUND, id);
             throw new FilmNotFoundException(id);
         }
-        log.debug("Начинается обновление фильма: {}, id: {}", filmUpdateDto, id);
+        log.debug(LogMessages.FILM_UPDATE_STARTED, id);
         film.setName(filmUpdateDto.getName());
         film.setDescription(filmUpdateDto.getDescription());
         film.setReleaseDate(filmUpdateDto.getReleaseDate());
         film.setDuration(filmUpdateDto.getDuration());
 
         Film updatedFilm = filmRepository.update(film);
-        log.info("Фильм успешно обновлен и возвращен: {}", updatedFilm);
+        log.info(LogMessages.FILM_UPDATE_SUCCESS, updatedFilm);
         return updatedFilm;
     }
 
     public void deleteFilm(Long id) {
-        log.trace("Начало метода deleteFilm, на входе фильм с id: {}", id);
+        log.trace(LogMessages.FILM_DELETE, id);
         Film film = filmRepository.findById(id);
         if (film == null) {
-            log.warn("Попытка удалить фильм, фильм не найден, id: {}", id);
+            log.warn(LogMessages.FILM_DELETE_NOT_FOUND, id);
             throw new FilmNotFoundException(id);
         }
-        log.debug("Начинается удаление фильма с id: {}", id);
+        log.debug(LogMessages.FILM_DELETE_STARTED, id);
         Film deletedFilm = filmRepository.deleteById(id);
-        log.info("Фильм успешно удален и возвращен: {}", deletedFilm);
+        log.info(LogMessages.FILM_DELETE_SUCCESS, deletedFilm);
     }
 }
