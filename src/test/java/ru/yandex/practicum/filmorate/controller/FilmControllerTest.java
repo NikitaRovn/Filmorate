@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import ru.yandex.practicum.filmorate.dto.ValidationErrorResponse;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.repository.FilmRepository;
+import ru.yandex.practicum.filmorate.repository.film.InMemoryFilmRepository;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -36,7 +36,7 @@ class FilmControllerTest {
     private TestRestTemplate testRestTemplate;
 
     @Autowired
-    private FilmRepository filmRepository;
+    private InMemoryFilmRepository filmRepository;
 
     @AfterEach
     void tearDown() {

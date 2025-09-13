@@ -7,17 +7,21 @@ import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
 import ru.yandex.practicum.filmorate.logging.LogMessages;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.repository.FilmRepository;
+import ru.yandex.practicum.filmorate.repository.film.InMemoryFilmRepository;
+import ru.yandex.practicum.filmorate.repository.likes.InMemoryLikesRepository;
 
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
 public class FilmService {
-    private final FilmRepository filmRepository;
+    private final InMemoryFilmRepository filmRepository;
+    private final InMemoryLikesRepository likesRepository;
 
-    public FilmService(FilmRepository filmRepository) {
+    public FilmService(InMemoryFilmRepository filmRepository, InMemoryLikesRepository likesRepository) {
         this.filmRepository = filmRepository;
+        this.likesRepository = likesRepository;
     }
 
     public Film addFilm(FilmRegisterDto filmRegisterDto) {
@@ -76,5 +80,20 @@ public class FilmService {
         log.debug(LogMessages.FILM_DELETE_STARTED, id);
         Film deletedFilm = filmRepository.deleteById(id);
         log.info(LogMessages.FILM_DELETE_SUCCESS, deletedFilm);
+    }
+
+    public List<Film> getMostLikedFilms(Integer count) {
+        List<Long> mostLikedFilms = likesRepository.findTopFilmsByLikes(count);
+        return mostLikedFilms.stream().map(this::getFilm).toList();
+    }
+
+    public Set<Long> addLike(Long id, Long userId) {
+        likesRepository.addLike(id, userId);
+        return likesRepository.findLikesByFilmId(id);
+    }
+
+    public Set<Long> deleteLike(Long id, Long userId) {
+        likesRepository.deleteLike(id, userId);
+        return likesRepository.findLikesByFilmId(id);
     }
 }

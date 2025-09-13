@@ -1,0 +1,8 @@
+spring:
+  main:
+    log-startup-info: false
+    banner-mode: off
+
+logging:
+  level:
+    ru.yandex.practicum.filmorate: warn
