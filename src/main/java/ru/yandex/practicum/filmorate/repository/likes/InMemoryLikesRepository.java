@@ -26,11 +26,6 @@ public class InMemoryLikesRepository implements LikesRepository {
         likes.get(filmId).remove(userId);
     }
 
-//    @Override
-//    public void findLikesByUserId(Long userId) {
-//
-//    }
-
     @Override
     public Set<Long> findLikesByFilmId(Long filmId) {
         return likes.getOrDefault(filmId, Collections.emptySet());

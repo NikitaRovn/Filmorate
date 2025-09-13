@@ -8,8 +8,6 @@ public interface LikesRepository {
 
     void deleteLike(Long filmId, Long userId);
 
-    // void findLikesByUserId(Long userId);
-
     Set<Long> findLikesByFilmId(Long filmId);
 
     List<Long> findTopFilmsByLikes(Integer count);

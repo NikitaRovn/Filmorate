@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
 import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
+import ru.yandex.practicum.filmorate.exception.friend.FriendNotFoundException;
 import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.logging.LogMessages;
 import ru.yandex.practicum.filmorate.model.User;
@@ -109,6 +110,14 @@ public class UserService {
     }
 
     public void deleteUserFriend(Long id, Long friendId) {
+        List<Long> friends = friendsRepository.findFriendsById(id);
+
+        if (friends == null) {
+            throw new UserNotFoundException(id);
+        } else if (!friends.contains(friendId)) {
+            throw new FriendNotFoundException(friendId);
+        }
+
         friendsRepository.deleteFriendship(id, friendId);
     }
 }
