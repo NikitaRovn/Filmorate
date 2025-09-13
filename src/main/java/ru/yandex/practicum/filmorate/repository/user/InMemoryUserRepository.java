@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Repository
 @Profile("dev")
@@ -26,6 +27,14 @@ public class InMemoryUserRepository implements UserRepository {
     @Override
     public User findById(Long id) {
         return users.get(id);
+    }
+
+    @Override
+    public List<User> findByIds(List<Long> ids) {
+        return ids.stream()
+                .map(users::get)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     @Override

@@ -86,12 +86,12 @@ public class UserService {
 
     public List<User> getUserFriends(Long id) {
         List<Long> friendIds = friendsRepository.findFriendsById(id);
-        return friendIds.stream().map(userRepository::findById).toList();
+        return userRepository.findByIds(friendIds);
     }
 
     public List<User> getMutualFriends(Long id, Long otherId) {
         List<Long> friendIdsUser = friendsRepository.findFriendsById(id);
-        List<User> friendsUser = friendIdsUser.stream().map(userRepository::findById).toList();
+        List<User> friendsUser = userRepository.findByIds(friendIdsUser);
         List<Long> friendIdsOtherUser = friendsRepository.findFriendsById(otherId);
 
         Set<Long> otherIds = new HashSet<>(friendIdsOtherUser);

@@ -9,6 +9,8 @@ public interface UserRepository {
 
     User findById(Long id);
 
+    List<User> findByIds(List<Long> ids);
+
     List<User> findAll();
 
     User update(User user);
