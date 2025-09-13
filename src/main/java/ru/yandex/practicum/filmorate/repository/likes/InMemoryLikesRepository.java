@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.repository.likes;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,7 +33,7 @@ public class InMemoryLikesRepository implements LikesRepository {
 
     @Override
     public Set<Long> findLikesByFilmId(Long filmId) {
-        return likes.get(filmId);
+        return likes.getOrDefault(filmId, Collections.emptySet());
     }
 
     @Override

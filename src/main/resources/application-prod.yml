@@ -6,3 +6,4 @@ spring:
 logging:
   level:
     ru.yandex.practicum.filmorate: warn
+    org.zalando.logbook: warn

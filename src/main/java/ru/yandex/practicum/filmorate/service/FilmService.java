@@ -83,6 +83,10 @@ public class FilmService {
     }
 
     public List<Film> getMostLikedFilms(Integer count) {
+        if (count == null || count <= 0) {
+            count = 10;
+        }
+
         List<Long> mostLikedFilms = likesRepository.findTopFilmsByLikes(count);
         return mostLikedFilms.stream().map(this::getFilm).toList();
     }
