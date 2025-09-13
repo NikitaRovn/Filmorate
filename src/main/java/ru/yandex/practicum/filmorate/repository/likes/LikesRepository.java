@@ -13,4 +13,6 @@ public interface LikesRepository {
     Set<Long> findLikesByFilmId(Long filmId);
 
     List<Long> findTopFilmsByLikes(Integer count);
+
+    void clear();
 }

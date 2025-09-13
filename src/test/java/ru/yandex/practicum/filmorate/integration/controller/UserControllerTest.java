@@ -11,9 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import ru.yandex.practicum.filmorate.dto.ValidationErrorResponse;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.repository.friends.InMemoryFriendsRepository;
 import ru.yandex.practicum.filmorate.repository.user.InMemoryUserRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,6 +29,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 // 6. Проверка, что пользователя не регистрирует, если дата рождения позже текущей.
 // 7. Проверка, что сервер отдает список пользователей корректно.
 // 8. Проверка, что сервер обновляет пользователя корректно.
+// 9. Проверка, что пользователи могут стать друзьями.
+// 10. Проверка, что пользователь может удалить друга.
+// 11. Проверка, что возвращается список друзей.
+// 12. Проверка, что возвращается список общих друзей.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -38,9 +44,13 @@ class UserControllerTest {
     @Autowired
     private InMemoryUserRepository userRepository;
 
+    @Autowired
+    private InMemoryFriendsRepository friendsRepository;
+
     @AfterEach
     void tearDown() {
         userRepository.clear();
+        friendsRepository.clear();
     }
 
     @DisplayName("1. Проверка, что регистрирует пользователя.")
@@ -256,5 +266,217 @@ class UserControllerTest {
         userNew.setId(id);
 
         assertThat(userNew).usingRecursiveComparison().isEqualTo(response.getBody());
+    }
+
+    @DisplayName("9. Проверка, что пользователи могут стать друзьями.")
+    @Test
+    void shouldSendFriendRequest() {
+        User user1 = User.builder()
+                .name("Name1")
+                .email("Email1@gmail.com")
+                .login("Login1")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response1 = testRestTemplate.postForEntity(
+                "/users",
+                user1,
+                User.class);
+
+        Long user1Id = response1.getBody().getId();
+
+        User user2 = User.builder()
+                .name("Name2")
+                .email("Email2@gmail.com")
+                .login("Login2")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response2 = testRestTemplate.postForEntity(
+                "/users",
+                user2,
+                User.class);
+
+        Long user2Id = response2.getBody().getId();
+
+        testRestTemplate.put("/users/{user1Id}/friends/{user2Id}", null, user1Id, user2Id);
+
+        friendsRepository.acceptFriendship(user2Id, user1Id);
+
+        List<Long> friends = friendsRepository.findFriendsById(user1Id);
+
+        assertThat(friends).hasSize(1);
+        assertThat(friends).isEqualTo(List.of(user2Id));
+    }
+
+
+    @DisplayName("10. Проверка, что пользователь может удалить друга.")
+    @Test
+    void shouldDeleteFriend() {
+        User user1 = User.builder()
+                .name("Name1")
+                .email("Email1@gmail.com")
+                .login("Login1")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response1 = testRestTemplate.postForEntity(
+                "/users",
+                user1,
+                User.class);
+
+        Long user1Id = response1.getBody().getId();
+
+        User user2 = User.builder()
+                .name("Name2")
+                .email("Email2@gmail.com")
+                .login("Login2")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response2 = testRestTemplate.postForEntity(
+                "/users",
+                user2,
+                User.class);
+
+        Long user2Id = response2.getBody().getId();
+
+        testRestTemplate.put("/users/{user1Id}/friends/{user2Id}",
+                null,
+                user1Id,
+                user2Id);
+
+        friendsRepository.acceptFriendship(user2Id, user1Id);
+
+        List<Long> friends = friendsRepository.findFriendsById(user1Id);
+
+        assertThat(friends).hasSize(1);
+        assertThat(friends).isEqualTo(List.of(user2Id));
+
+        testRestTemplate.delete("/users/{user1Id}/friends/{user2Id}",
+                user1Id,
+                user2Id);
+
+        friends = friendsRepository.findFriendsById(user1Id);
+
+        assertThat(friends).hasSize(0);
+    }
+
+    @DisplayName("11. Проверка, что возвращается список друзей.")
+    @Test
+    void shouldReturnFriendsList() {
+        User user1 = User.builder()
+                .name("Name1")
+                .email("Email1@gmail.com")
+                .login("Login1")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response1 = testRestTemplate.postForEntity(
+                "/users",
+                user1,
+                User.class);
+
+        Long user1Id = response1.getBody().getId();
+
+        User user2 = User.builder()
+                .name("Name2")
+                .email("Email2@gmail.com")
+                .login("Login2")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response2 = testRestTemplate.postForEntity(
+                "/users",
+                user2,
+                User.class);
+
+        Long user2Id = response2.getBody().getId();
+
+        testRestTemplate.put("/users/{user1Id}/friends/{user2Id}",
+                null,
+                user1Id,
+                user2Id);
+
+        friendsRepository.acceptFriendship(user2Id, user1Id);
+
+        ResponseEntity<User[]> friendsResponse = testRestTemplate.getForEntity(
+                "/users/{user1Id}/friends",
+                User[].class,
+                user1Id);
+
+        assertThat(friendsResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(friendsResponse.getBody()).isNotNull();
+        assertThat(friendsResponse.getBody()).hasSize(1);
+        assertThat(friendsResponse.getBody()[0].getId()).isEqualTo(user2Id);
+    }
+
+    @DisplayName("12. Проверка, что возвращается список общих друзей.")
+    @Test
+    void shouldReturnCommonFriends() {
+        User user1 = User.builder()
+                .name("Name1")
+                .email("Email1@gmail.com")
+                .login("Login1")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response1 = testRestTemplate.postForEntity(
+                "/users",
+                user1,
+                User.class);
+
+        Long user1Id = response1.getBody().getId();
+
+        User user2 = User.builder()
+                .name("Name2")
+                .email("Email2@gmail.com")
+                .login("Login2")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response2 = testRestTemplate.postForEntity(
+                "/users",
+                user2,
+                User.class);
+
+        Long user2Id = response2.getBody().getId();
+
+        User user3 = User.builder()
+                .name("Name3")
+                .email("Email3@gmail.com")
+                .login("Login3")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        ResponseEntity<User> response3 = testRestTemplate.postForEntity(
+                "/users",
+                user3,
+                User.class);
+
+        Long user3Id = response3.getBody().getId();
+
+        testRestTemplate.put("/users/{user1Id}/friends/{user3Id}",
+                null,
+                user1Id,
+                user3Id);
+        friendsRepository.acceptFriendship(user3Id, user1Id);
+
+        testRestTemplate.put("/users/{user2Id}/friends/{user3Id}",
+                null,
+                user2Id,
+                user3Id);
+        friendsRepository.acceptFriendship(user3Id, user2Id);
+
+        ResponseEntity<User[]> commonFriendsResponse = testRestTemplate.getForEntity(
+                "/users/{user1Id}/friends/common/{user2Id}",
+                User[].class,
+                user1Id,
+                user2Id);
+
+        assertThat(commonFriendsResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(commonFriendsResponse.getBody()).isNotNull();
+        assertThat(commonFriendsResponse.getBody()).hasSize(1);
+        assertThat(commonFriendsResponse.getBody()[0].getId()).isEqualTo(user3Id);
     }
 }

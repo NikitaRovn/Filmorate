@@ -39,4 +39,9 @@ public class InMemoryFriendsRepository implements FriendsRepository {
                 .map(Map.Entry::getKey)
                 .toList();
     }
+
+    @Override
+    public void clear() {
+        friendships.clear();
+    }
 }

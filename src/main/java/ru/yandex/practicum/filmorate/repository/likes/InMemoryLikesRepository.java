@@ -44,4 +44,9 @@ public class InMemoryLikesRepository implements LikesRepository {
                 .map(Map.Entry::getKey)
                 .toList();
     }
+
+    @Override
+    public void clear() {
+        likes.clear();
+    }
 }

@@ -10,4 +10,6 @@ public interface FriendsRepository {
     void deleteFriendship(Long userId, Long friendId);
 
     List<Long> findFriendsById(Long id);
+
+    void clear();
 }
