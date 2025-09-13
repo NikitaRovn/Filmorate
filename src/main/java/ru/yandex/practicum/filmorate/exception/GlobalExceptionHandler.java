@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.yandex.practicum.filmorate.dto.ErrorResponse;
 import ru.yandex.practicum.filmorate.dto.ValidationErrorResponse;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
+import ru.yandex.practicum.filmorate.exception.friend.FriendNotFoundException;
 import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 
 import java.time.LocalDateTime;
@@ -44,6 +45,21 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND.value(),
                 HttpStatus.NOT_FOUND.getReasonPhrase(),
                 "Фильм не найден.",
+                r.getRequestURI(),
+                errors
+        );
+    }
+
+    @ExceptionHandler(FriendNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ValidationErrorResponse handleFriendNotFoundException(FriendNotFoundException e, HttpServletRequest r) {
+        List<ErrorResponse> errors = e.getErrors().stream().toList();
+
+        return new ValidationErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                "Друг не найден.",
                 r.getRequestURI(),
                 errors
         );
