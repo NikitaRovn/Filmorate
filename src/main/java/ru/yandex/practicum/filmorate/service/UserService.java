@@ -10,7 +10,9 @@ import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.repository.friends.InMemoryFriendsRepository;
 import ru.yandex.practicum.filmorate.repository.user.InMemoryUserRepository;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -90,10 +92,12 @@ public class UserService {
         List<Long> friendIdsUser = friendsRepository.findFriendsById(id);
         List<User> friendsUser = friendIdsUser.stream().map(userRepository::findById).toList();
         List<Long> friendIdsOtherUser = friendsRepository.findFriendsById(otherId);
-        List<User> friendsOtherUser = friendIdsOtherUser.stream().map(userRepository::findById).toList();
 
-        return friendsUser.stream().filter(user -> friendsOtherUser.stream()
-                .anyMatch(u -> u.getId().equals(user.getId()))).toList();
+        Set<Long> otherIds = new HashSet<>(friendIdsOtherUser);
+
+        return friendsUser.stream()
+                .filter(user -> otherIds.contains(user.getId()))
+                .toList();
     }
 
     public void sendUserFriendRequest(Long userId, Long friendId) {
