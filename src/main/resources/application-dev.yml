@@ -6,3 +6,4 @@ spring:
 logging:
   level:
     ru.yandex.practicum.filmorate: trace
+    org.zalando.logbook: trace

@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.controller;
+package ru.yandex.practicum.filmorate.integration.controller;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -7,11 +7,13 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import ru.yandex.practicum.filmorate.dto.ValidationErrorResponse;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.repository.FilmRepository;
+import ru.yandex.practicum.filmorate.repository.film.InMemoryFilmRepository;
+import ru.yandex.practicum.filmorate.repository.likes.InMemoryLikesRepository;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -27,6 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 // 5. Проверка, что не добавляет фильм с нулевой.
 // 5.1 Проверка, что не добавляет фильм с отрицательной длительностью.
 // 6. Проверка, что сервер отдает список фильмов корректно.
+// 7. Проверка, что пользователь может ставить лайк фильму.
+// 8. Проверка, что пользователь может удалять лайк.
+// 9. Проверка, что выводится список фильмов по лайкам.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -36,11 +41,15 @@ class FilmControllerTest {
     private TestRestTemplate testRestTemplate;
 
     @Autowired
-    private FilmRepository filmRepository;
+    private InMemoryFilmRepository filmRepository;
+
+    @Autowired
+    private InMemoryLikesRepository likesRepository;
 
     @AfterEach
     void tearDown() {
         filmRepository.clear();
+        likesRepository.clear();
     }
 
     @DisplayName("1. Проверка, что добавляется фильм.")
@@ -223,5 +232,102 @@ class FilmControllerTest {
         Film[] films = response.getBody();
 
         assertThat(films).hasSize(2);
+    }
+
+    @DisplayName("7. Проверка, что пользователь может ставить лайк фильму.")
+    @Test
+    void shouldAddLikeToFilm() {
+        Film film = Film.builder()
+                .name("Film1")
+                .description("Description1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(Duration.ofMinutes(120))
+                .build();
+
+        ResponseEntity<Film> response = testRestTemplate.postForEntity(
+                "/films",
+                film,
+                Film.class);
+
+        Long filmId = response.getBody().getId();
+
+        ResponseEntity<Long[]> likeResponse = testRestTemplate.exchange(
+                "/films/{id}/like/{userId}",
+                HttpMethod.PUT,
+                null,
+                Long[].class,
+                filmId,
+                1L);
+
+        assertThat(likeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(likeResponse.getBody()).containsExactly(1L);
+    }
+
+    @DisplayName("8. Проверка, что пользователь может удалять лайк.")
+    @Test
+    void shouldRemoveLikeFromFilm() {
+        Film film = Film.builder()
+                .name("Film1")
+                .description("Description1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(Duration.ofMinutes(120))
+                .build();
+
+        ResponseEntity<Film> response = testRestTemplate.postForEntity(
+                "/films",
+                film,
+                Film.class);
+
+        Long filmId = response.getBody().getId();
+
+        testRestTemplate.put("/films/{id}/like/{userId}", null, filmId, 1L);
+
+        ResponseEntity<Long[]> afterDelete = testRestTemplate.exchange(
+                "/films/{id}/like/{userId}",
+                HttpMethod.DELETE,
+                null,
+                Long[].class,
+                filmId,
+                1L);
+
+        assertThat(afterDelete.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(afterDelete.getBody()).isEmpty();
+    }
+
+    @DisplayName("9. Проверка, что выводится список фильмов по лайкам.")
+    @Test
+    void shouldReturnFilmsSortedByLikes() {
+        Film film1 = Film.builder()
+                .name("Film1")
+                .description("Description1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(Duration.ofMinutes(120))
+                .build();
+
+        Film film2 = Film.builder()
+                .name("Film2")
+                .description("Description2")
+                .releaseDate(LocalDate.of(2005, 5, 5))
+                .duration(Duration.ofMinutes(90))
+                .build();
+
+        ResponseEntity<Film> response1 = testRestTemplate.postForEntity("/films", film1, Film.class);
+        ResponseEntity<Film> response2 = testRestTemplate.postForEntity("/films", film2, Film.class);
+
+        Long film1Id = response1.getBody().getId();
+        Long film2Id = response2.getBody().getId();
+
+        testRestTemplate.put("/films/{id}/like/{userId}", null, film1Id, 1L);
+        testRestTemplate.put("/films/{id}/like/{userId}", null, film1Id, 2L);
+        testRestTemplate.put("/films/{id}/like/{userId}", null, film2Id, 3L);
+
+        ResponseEntity<Film[]> response = testRestTemplate.getForEntity(
+                "/films/popular?count=2",
+                Film[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(2);
+        assertThat(response.getBody()[0].getId()).isEqualTo(film1Id);
+        assertThat(response.getBody()[1].getId()).isEqualTo(film2Id);
     }
 }
