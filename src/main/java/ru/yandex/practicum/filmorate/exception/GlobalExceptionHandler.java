@@ -14,6 +14,7 @@ import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
@@ -59,7 +60,7 @@ public class GlobalExceptionHandler {
 
         List<ErrorResponse> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(f -> new ErrorResponse(f.getField(), f.getDefaultMessage()))
-                .toList();
+                .collect(Collectors.toList());
 
         return new ValidationErrorResponse(
                 LocalDateTime.now(),

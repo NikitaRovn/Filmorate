@@ -1,6 +1,5 @@
-package ru.yandex.practicum.filmorate.repository.user;
+package ru.yandex.practicum.filmorate.repository;
 
-import org.springframework.context.annotation.Profile;
 import ru.yandex.practicum.filmorate.model.User;
 import org.springframework.stereotype.Repository;
 
@@ -8,15 +7,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Repository
-@Profile("dev")
-public class InMemoryUserRepository implements UserRepository {
+public class UserRepository {
     private final Map<Long, User> users = new HashMap<>();
     private Long lastId = 1L;
 
-    @Override
     public User save(User user) {
         user.setId(lastId);
         users.put(lastId, user);
@@ -24,37 +20,24 @@ public class InMemoryUserRepository implements UserRepository {
         return user;
     }
 
-    @Override
     public User findById(Long id) {
         return users.get(id);
     }
 
-    @Override
-    public List<User> findByIds(List<Long> ids) {
-        return ids.stream()
-                .map(users::get)
-                .filter(Objects::nonNull)
-                .toList();
-    }
-
-    @Override
     public List<User> findAll() {
         return new ArrayList<>(users.values());
     }
 
-    @Override
     public User update(User user) {
         Long id = user.getId();
         users.put(id, user);
         return users.get(id);
     }
 
-    @Override
     public User deleteById(Long id) {
         return users.remove(id);
     }
 
-    @Override
     public void clear() {
         users.clear();
         lastId = 1L;

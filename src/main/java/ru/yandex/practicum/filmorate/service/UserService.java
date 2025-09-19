@@ -4,26 +4,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
 import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
-import ru.yandex.practicum.filmorate.exception.friend.FriendNotFoundException;
 import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.logging.LogMessages;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.repository.friends.InMemoryFriendsRepository;
-import ru.yandex.practicum.filmorate.repository.user.InMemoryUserRepository;
+import ru.yandex.practicum.filmorate.repository.UserRepository;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Slf4j
 @Service
 public class UserService {
-    private final InMemoryUserRepository userRepository;
-    private final InMemoryFriendsRepository friendsRepository;
+    private final UserRepository userRepository;
 
-    public UserService(InMemoryUserRepository userRepository, InMemoryFriendsRepository friendsRepository) {
+    public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.friendsRepository = friendsRepository;
     }
 
     public User registerUser(UserRegisterDto userRegisterDto) {
@@ -82,42 +76,5 @@ public class UserService {
         log.debug(LogMessages.USER_DELETE_STARTED, id);
         User deletedUser = userRepository.deleteById(id);
         log.info(LogMessages.USER_DELETE_SUCCESS, deletedUser);
-    }
-
-    public List<User> getUserFriends(Long id) {
-        List<Long> friendIds = friendsRepository.findFriendsById(id);
-        return userRepository.findByIds(friendIds);
-    }
-
-    public List<User> getMutualFriends(Long id, Long otherId) {
-        List<Long> friendIdsUser = friendsRepository.findFriendsById(id);
-        List<User> friendsUser = userRepository.findByIds(friendIdsUser);
-        List<Long> friendIdsOtherUser = friendsRepository.findFriendsById(otherId);
-
-        Set<Long> otherIds = new HashSet<>(friendIdsOtherUser);
-
-        return friendsUser.stream()
-                .filter(user -> otherIds.contains(user.getId()))
-                .toList();
-    }
-
-    public void sendUserFriendRequest(Long userId, Long friendId) {
-        friendsRepository.sendFriendship(userId, friendId);
-    }
-
-    public void acceptUserFriendRequest(Long id, Long friendId) {
-        friendsRepository.acceptFriendship(id, friendId);
-    }
-
-    public void deleteUserFriend(Long id, Long friendId) {
-        List<Long> friends = friendsRepository.findFriendsById(id);
-
-        if (friends == null) {
-            throw new UserNotFoundException(id);
-        } else if (!friends.contains(friendId)) {
-            throw new FriendNotFoundException(friendId);
-        }
-
-        friendsRepository.deleteFriendship(id, friendId);
     }
 }

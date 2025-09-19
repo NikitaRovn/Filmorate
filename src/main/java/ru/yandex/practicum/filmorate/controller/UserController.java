@@ -3,7 +3,6 @@ package ru.yandex.practicum.filmorate.controller;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -41,6 +40,11 @@ public class UserController {
         return userService.registerUser(userRegisterDto);
     }
 
+//    @PutMapping
+//    public User updateUser(@Valid @RequestBody UserRegisterDto updatedUserDto) {
+//        return userService.updateUser(updatedUserDto);
+//    }
+
     @PutMapping("/{id}")
     public User updateUser(@Valid @RequestBody UserUpdateDto userUpdateDto, @PathVariable Long id) {
         return userService.updateUser(userUpdateDto, id);
@@ -49,30 +53,5 @@ public class UserController {
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
-    }
-
-    @GetMapping("/{id}/friends")
-    public List<User> getUserFriends(@PathVariable Long id) {
-        return userService.getUserFriends(id);
-    }
-
-    @GetMapping("/{id}/friends/common/{otherId}")
-    public List<User> getMutualFriends(@PathVariable Long id, @PathVariable Long otherId) {
-        return userService.getMutualFriends(id, otherId);
-    }
-
-    @PutMapping("/{id}/friends/{friendId}")
-    public void sendUserFriendRequest(@PathVariable Long id, @PathVariable Long friendId) {
-        userService.sendUserFriendRequest(id, friendId);
-    }
-
-    @PatchMapping("/{id}/friends/{friendId}")
-    public void acceptUserFriendRequest(@PathVariable Long id, @PathVariable Long friendId) {
-        userService.acceptUserFriendRequest(id, friendId);
-    }
-
-    @DeleteMapping("/{id}/friends/{friendId}")
-    public void deleteUserFriend(@PathVariable Long id, @PathVariable Long friendId) {
-        userService.deleteUserFriend(id, friendId);
     }
 }
