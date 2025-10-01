@@ -11,5 +11,5 @@ public interface FriendsRepository {
 
     List<Long> findFriendsById(Long id);
 
-    void clear();
+    void cleanup();
 }

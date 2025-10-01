@@ -12,5 +12,5 @@ public interface LikesRepository {
 
     List<Long> findTopFilmsByLikes(Integer count);
 
-    void clear();
+    void cleanup();
 }
