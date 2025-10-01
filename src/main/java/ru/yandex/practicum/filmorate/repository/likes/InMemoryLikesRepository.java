@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.repository.likes;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
@@ -11,8 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@Repository
-@Profile("dev")
+@Repository("inMemoryLikesRepository")
 public class InMemoryLikesRepository implements LikesRepository {
     private final Map<Long, Set<Long>> likes = new HashMap<>();
 
@@ -41,7 +39,7 @@ public class InMemoryLikesRepository implements LikesRepository {
     }
 
     @Override
-    public void clear() {
+    public void cleanup() {
         likes.clear();
     }
 }

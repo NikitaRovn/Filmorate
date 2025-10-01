@@ -1,14 +1,12 @@
 package ru.yandex.practicum.filmorate.repository.friends;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Repository
-@Profile("dev")
+@Repository("inMemoryFriendsRepository")
 public class InMemoryFriendsRepository implements FriendsRepository {
     private final Map<Long, Map<Long, Boolean>> friendships = new HashMap<>();
 
@@ -41,7 +39,7 @@ public class InMemoryFriendsRepository implements FriendsRepository {
     }
 
     @Override
-    public void clear() {
+    public void cleanup() {
         friendships.clear();
     }
 }

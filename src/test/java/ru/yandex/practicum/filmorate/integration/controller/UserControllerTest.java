@@ -1,23 +1,28 @@
 package ru.yandex.practicum.filmorate.integration.controller;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.HttpStatus;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import ru.yandex.practicum.filmorate.dto.ValidationErrorResponse;
-import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.repository.friends.InMemoryFriendsRepository;
-import ru.yandex.practicum.filmorate.repository.user.InMemoryUserRepository;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import ru.yandex.practicum.filmorate.dto.UserDto;
+import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
+import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.tuple;
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 // Список тестов:
 // 1. Проверка, что регистрирует пользователя.
@@ -25,458 +30,422 @@ import static org.assertj.core.api.Assertions.assertThat;
 // 3. Проверка, что не регистрирует пользователя с пробелом в логине.
 // 4. Проверка, что не регистрирует пользователя, если почта не содержит @.
 // 5. Проверка, что не регистрирует пользователя, если логин пустой.
-// 5.1 Проверка, что не регистрирует пользователя, если логин не передан.
-// 6. Проверка, что пользователя не регистрирует, если дата рождения позже текущей.
-// 7. Проверка, что сервер отдает список пользователей корректно.
-// 8. Проверка, что сервер обновляет пользователя корректно.
-// 9. Проверка, что пользователи могут стать друзьями.
-// 10. Проверка, что пользователь может удалить друга.
-// 11. Проверка, что возвращается список друзей.
-// 12. Проверка, что возвращается список общих друзей.
+// 6. Проверка, что не регистрирует пользователя, если логин не передан.
+// 7. Проверка, что пользователя не регистрирует, если дата рождения позже текущей.
+// 8. Проверка, что сервер отдает список пользователей корректно.
+// 9. Проверка, что сервер обновляет пользователя корректно.
+// 10. Проверка, что пользователи могут стать друзьями.
+// 11. Проверка, что пользователь может удалить друга.
+// 12. Проверка, что возвращается список друзей.
+// 13. Проверка, что возвращается список общих друзей.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@AutoConfigureTestDatabase
+@Transactional
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class UserControllerTest {
-
     @Autowired
-    private TestRestTemplate testRestTemplate;
+    private TestRestTemplate restTemplate;
 
-    @Autowired
-    private InMemoryUserRepository userRepository;
-
-    @Autowired
-    private InMemoryFriendsRepository friendsRepository;
-
-    @AfterEach
-    void tearDown() {
-        userRepository.clear();
-        friendsRepository.clear();
-    }
-
-    @DisplayName("1. Проверка, что регистрирует пользователя.")
+    @DisplayName("1. Проверка, что регистрирует пользователя")
     @Test
     void shouldRegisterUser() {
-        User user = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .login("Login1")
-                .birthday(LocalDate.of(2000, 1, 1))
+        UserRegisterDto dto = UserRegisterDto.builder()
+                .login("testuser1")
+                .email("testuser1@example.com")
+                .name("Тестовый пользователь 1")
+                .birthday(LocalDate.parse("1990-01-01"))
                 .build();
 
-        ResponseEntity<User> response = testRestTemplate.postForEntity(
-                "/users",
-                user,
-                User.class);
+        ResponseEntity<UserDto> response = restTemplate.postForEntity("/users", dto, UserDto.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCodeValue()).isEqualTo(200);
 
-        User registeredUser = response.getBody();
-
-        assertThat(registeredUser)
-                .usingRecursiveComparison()
-                .ignoringFields("id")
-                .isEqualTo(user);
-
-        assertThat(userRepository.findAll()).hasSize(1);
+        UserDto savedUser = response.getBody();
+        assertThat(savedUser).isNotNull();
+        assertThat(savedUser.getId()).isNotNull();
+        assertThat(savedUser.getLogin()).isEqualTo(dto.getLogin());
+        assertThat(savedUser.getEmail()).isEqualTo(dto.getEmail());
+        assertThat(savedUser.getName()).isEqualTo(dto.getName());
+        assertThat(savedUser.getBirthday()).isEqualTo(dto.getBirthday());
     }
 
-    @DisplayName("2. Проверка, что регистрирует пользователя с пустым именем.")
+    @DisplayName("2. Проверка, что регистрирует пользователя с пустым именем и подставляет логин")
     @Test
-    void shouldSetNameAsLoginIfNameEmpty() {
-        User userNoName = User.builder()
+    void shouldRegisterUserWithEmptyNameAndSetLoginAsName() {
+        UserRegisterDto dto = UserRegisterDto.builder()
+                .login("testuser2")
+                .email("testuser2@example.com")
                 .name("")
-                .email("Email1@gmail.com")
-                .login("Login1")
-                .birthday(LocalDate.of(2000, 1, 1))
+                .birthday(LocalDate.parse("1990-01-01"))
                 .build();
 
-        ResponseEntity<User> response = testRestTemplate.postForEntity(
-                "/users",
-                userNoName,
-                User.class);
+        ResponseEntity<UserDto> response = restTemplate.postForEntity("/users", dto, UserDto.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().getName()).isEqualTo("Login1");
+        assertThat(response.getStatusCodeValue()).isEqualTo(200);
+
+        UserDto savedUser = response.getBody();
+        assertThat(savedUser).isNotNull();
+        assertThat(savedUser.getId()).isNotNull();
+        assertThat(savedUser.getLogin()).isEqualTo(dto.getLogin());
+
+        assertThat(savedUser.getName()).isEqualTo(dto.getLogin());
+
+        assertThat(savedUser.getEmail()).isEqualTo(dto.getEmail());
+        assertThat(savedUser.getBirthday()).isEqualTo(dto.getBirthday());
     }
 
-    @DisplayName("3. Проверка, что не регистрирует пользователя с пробелом в логине.")
+    @DisplayName("3. Проверка, что не регистрирует пользователя с пробелом в логине")
     @Test
-    void shouldRejectRegisterUserIfLoginWithSpace() {
-        User userBadLogin = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .login("Login 1")
-                .birthday(LocalDate.of(2000, 1, 1))
+    void shouldNotRegisterUserWithSpaceInLogin() {
+        UserRegisterDto dto = UserRegisterDto.builder()
+                .login("invalid login")
+                .email("user3@example.com")
+                .name("User Three")
+                .birthday(LocalDate.parse("1990-01-01"))
                 .build();
 
-        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
-                "/users",
-                userBadLogin,
-                ValidationErrorResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity("/users", dto, String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getErrors()).isNotEmpty();
-        assertThat(response.getBody().getErrors())
-                .anyMatch(e -> e.getField().equals("login"));
+        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+
+        assertThat(response.getBody()).contains("login");
+        System.out.println("Ответ при ошибке валидации (логин с пробелом): " + response.getBody());
     }
 
-    @DisplayName("4. Проверка, что не регистрирует пользователя, если почта не содержит @.")
+    @DisplayName("4. Проверка, что не регистрирует пользователя, если почта не содержит @")
     @Test
-    void shouldRejectRegisterUserIfEmailInvalid() {
-        User userBadEmail = User.builder()
-                .name("Name1")
-                .email("thisisdog.ru")
-                .login("Login1")
-                .birthday(LocalDate.of(2000, 1, 1))
+    void shouldNotRegisterUserWithInvalidEmail() {
+        UserRegisterDto dto = UserRegisterDto.builder()
+                .login("user4")
+                .email("user4example.com")
+                .name("User Four")
+                .birthday(LocalDate.parse("1990-01-01"))
                 .build();
 
-        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
-                "/users",
-                userBadEmail,
-                ValidationErrorResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity("/users", dto, String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getErrors()).isNotEmpty();
-        assertThat(response.getBody().getErrors())
-                .anyMatch(e -> e.getField().equals("email"));
+        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+
+        assertThat(response.getBody()).contains("email");
+        System.out.println("Ответ при ошибке валидации (невалидный email): " + response.getBody());
     }
 
-    @DisplayName("5. Проверка, что не регистрирует пользователя, если логин пустой.")
+    @DisplayName("5. Проверка, что не регистрирует пользователя, если логин пустой")
     @Test
-    void shouldRejectRegisterUserIfLoginIsBlank() {
-        User userNoLogin = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .login("")
-                .birthday(LocalDate.of(2000, 1, 1))
+    void shouldNotRegisterUserWithEmptyLogin() {
+        UserRegisterDto dto = UserRegisterDto.builder()
+                .login("   ")
+                .email("user5@example.com")
+                .name("User Five")
+                .birthday(LocalDate.parse("1990-01-01"))
                 .build();
 
-        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
-                "/users",
-                userNoLogin,
-                ValidationErrorResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity("/users", dto, String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getErrors()).isNotEmpty();
-        assertThat(response.getBody().getErrors())
-                .anyMatch(e -> e.getField().equals("login"));
+        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+
+        assertThat(response.getBody()).contains("login");
+        System.out.println("Ответ при ошибке валидации (пустой логин): " + response.getBody());
     }
 
-    @DisplayName("5.1 Проверка, что не регистрирует пользователя, если логин не передан.")
+    @DisplayName("6. Проверка, что не регистрирует пользователя, если логин не передан")
     @Test
-    void shouldRejectRegisterUserIfLoginIsNull() {
-        User userNoLogin = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .birthday(LocalDate.of(2000, 1, 1))
+    void shouldNotRegisterUserWithoutLogin() {
+        UserRegisterDto dto = UserRegisterDto.builder()
+                .login(null)
+                .email("user6@example.com")
+                .name("User Six")
+                .birthday(LocalDate.parse("1990-01-01"))
                 .build();
 
-        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
-                "/users",
-                userNoLogin,
-                ValidationErrorResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity("/users", dto, String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getErrors()).isNotEmpty();
-        assertThat(response.getBody().getErrors()).anyMatch(e -> e.getField().equals("login"));
+        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+
+        assertThat(response.getBody()).contains("login");
+        System.out.println("Ответ при ошибке валидации (логин не передан): " + response.getBody());
     }
 
-    @DisplayName("6. Проверка, что пользователя не регистрирует, если дата рождения позже текущей.")
+    @DisplayName("7. Проверка, что не регистрирует пользователя с будущей датой рождения")
     @Test
-    void shouldRejectRegisterUserIfBirthdayInvalid() {
-        User userBadBirthday = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .login("Login1")
-                .birthday(LocalDate.of(2100, 1, 1))
+    void shouldNotRegisterUserWithFutureBirthday() {
+        UserRegisterDto dto = UserRegisterDto.builder()
+                .login("futureUser")
+                .email("future@example.com")
+                .name("Future User")
+                .birthday(LocalDate.parse(LocalDate.now().plusDays(1).toString()))
                 .build();
 
-        ResponseEntity<ValidationErrorResponse> response = testRestTemplate.postForEntity(
-                "/users",
-                userBadBirthday,
-                ValidationErrorResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity("/users", dto, String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getErrors()).isNotEmpty();
-        assertThat(response.getBody().getErrors())
-                .anyMatch(e -> e.getField().equals("birthday"));
+        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+
+        assertThat(response.getBody()).contains("birthday");
+        System.out.println("Ответ при ошибке валидации (будущая дата рождения): " + response.getBody());
     }
 
-    @DisplayName("7. Проверка, что сервер отдает список пользователей корректно.")
+    @DisplayName("8. Проверка, что сервер отдает список пользователей корректно")
     @Test
-    void shouldGetAllUsers() {
-        User user1 = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .login("Login1")
-                .birthday(LocalDate.of(2000, 1, 1))
+    void shouldReturnListOfUsers() {
+        UserRegisterDto dto1 = UserRegisterDto.builder()
+                .login("user1")
+                .email("user1@example.com")
+                .name("User One")
+                .birthday(LocalDate.parse("1990-01-01"))
                 .build();
 
-        testRestTemplate.postForEntity(
-                "/users",
-                user1,
-                User.class);
-
-        User user2 = User.builder()
-                .name("Name2")
-                .email("Email2@gmail.com")
-                .login("Login2")
-                .birthday(LocalDate.of(2000, 1, 1))
+        UserRegisterDto dto2 = UserRegisterDto.builder()
+                .login("user2")
+                .email("user2@example.com")
+                .name("User Two")
+                .birthday(LocalDate.parse("1991-02-02"))
                 .build();
 
-        testRestTemplate.postForEntity(
-                "/users",
-                user2,
-                User.class);
+        UserRegisterDto dto3 = UserRegisterDto.builder()
+                .login("user3")
+                .email("user3@example.com")
+                .name("User Three")
+                .birthday(LocalDate.parse("1992-03-03"))
+                .build();
 
-        ResponseEntity<User[]> response = testRestTemplate.getForEntity("/users", User[].class);
-        User[] users = response.getBody();
+        restTemplate.postForEntity("/users", dto1, String.class);
+        restTemplate.postForEntity("/users", dto2, String.class);
+        restTemplate.postForEntity("/users", dto3, String.class);
 
-        assertThat(users).hasSize(2);
+        ResponseEntity<UserDto[]> response = restTemplate.getForEntity("/users", UserDto[].class);
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(200);
+
+        UserDto[] users = response.getBody();
+        assertThat(users).isNotNull()
+                .hasSize(3);
+
+        List<String> logins = Arrays.stream(users)
+                .map(UserDto::getLogin)
+                .toList();
+
+        assertThat(logins).containsExactlyInAnyOrder("user1", "user2", "user3");
     }
 
-    @DisplayName("8. Проверка, что сервер обновляет пользователя корректно.")
+    @DisplayName("9. Проверка, что сервер обновляет пользователя корректно")
     @Test
-    void shouldUpdateUserData() {
-        User userOld = User.builder()
-                .name("NameOld")
-                .email("EmailOld@gmail.com")
-                .login("LoginOld")
-                .birthday(LocalDate.of(2000, 1, 1))
+    void shouldUpdateUser() {
+        UserRegisterDto registerDto = UserRegisterDto.builder()
+                .login("userUpdate")
+                .email("update@example.com")
+                .name("Original Name")
+                .birthday(LocalDate.parse("1990-01-01"))
                 .build();
 
-        ResponseEntity<User> response = testRestTemplate.postForEntity(
-                "/users",
-                userOld,
-                User.class);
+        ResponseEntity<UserDto> createResponse = restTemplate.postForEntity("/users", registerDto, UserDto.class);
+        assertThat(createResponse.getStatusCodeValue()).isEqualTo(200);
 
-        Long id = response.getBody().getId();
+        UserDto createdUser = createResponse.getBody();
+        assertThat(createdUser).isNotNull();
+        Long userId = createdUser.getId();
 
-        User userNew = User.builder()
-                .name("NameNew")
-                .email("EmailNew@gmail.com")
-                .login("LoginNew")
-                .birthday(LocalDate.of(2010, 1, 1))
+        UserUpdateDto updateDto = UserUpdateDto.builder()
+                .login("userUpdated")
+                .email("updated@example.com")
+                .name("Updated Name")
+                .birthday(LocalDate.parse("1991-02-02"))
                 .build();
 
-        testRestTemplate.put("/users/{id}", userNew, id);
+        restTemplate.put("/users/{id}", updateDto, userId);
 
-        response = testRestTemplate.getForEntity("/users/{id}", User.class, id);
+        ResponseEntity<UserDto> getResponse = restTemplate.getForEntity("/users/{id}", UserDto.class, userId);
+        assertThat(getResponse.getStatusCodeValue()).isEqualTo(200);
 
-        userNew.setId(id);
-
-        assertThat(userNew).usingRecursiveComparison().isEqualTo(response.getBody());
+        UserDto updatedUser = getResponse.getBody();
+        assertThat(updatedUser).isNotNull()
+                .extracting(UserDto::getLogin, UserDto::getEmail, UserDto::getName, UserDto::getBirthday)
+                .containsExactly("userUpdated", "updated@example.com", "Updated Name", LocalDate.of(1991, 2, 2));
     }
 
-    @DisplayName("9. Проверка, что пользователи могут стать друзьями.")
+    @LocalServerPort
+    private int port;
+
+    @DisplayName("10. Проверка, что пользователи могут стать друзьями.")
     @Test
-    void shouldSendFriendRequest() {
-        User user1 = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .login("Login1")
-                .birthday(LocalDate.of(2000, 1, 1))
+    void shouldAddFriends() {
+        RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
+        String baseUrl = "http://localhost:" + port;
+
+        UserRegisterDto user1Dto = UserRegisterDto.builder()
+                .login("alice")
+                .email("alice@example.com")
+                .name("Alice")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .build();
+        UserRegisterDto user2Dto = UserRegisterDto.builder()
+                .login("bob")
+                .email("bob@example.com")
+                .name("Bob")
+                .birthday(LocalDate.of(1991, 2, 2))
                 .build();
 
-        ResponseEntity<User> response1 = testRestTemplate.postForEntity(
-                "/users",
-                user1,
-                User.class);
+        UserDto user1 = restTemplate.postForEntity(baseUrl + "/users", user1Dto, UserDto.class).getBody();
+        UserDto user2 = restTemplate.postForEntity(baseUrl + "/users", user2Dto, UserDto.class).getBody();
 
-        Long user1Id = response1.getBody().getId();
+        restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user2.getId());
 
-        User user2 = User.builder()
-                .name("Name2")
-                .email("Email2@gmail.com")
-                .login("Login2")
-                .birthday(LocalDate.of(2000, 1, 1))
-                .build();
+        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}",
+                HttpMethod.PATCH, null, Void.class, user2.getId(), user1.getId());
 
-        ResponseEntity<User> response2 = testRestTemplate.postForEntity(
-                "/users",
-                user2,
-                User.class);
+        List<UserDto> user1Friends = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user1.getId()));
+        List<UserDto> user2Friends = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user2.getId()));
 
-        Long user2Id = response2.getBody().getId();
+        assertThat(user1Friends)
+                .extracting(UserDto::getId, UserDto::getLogin)
+                .containsExactly(tuple(user2.getId(), "bob"));
 
-        testRestTemplate.put("/users/{user1Id}/friends/{user2Id}", null, user1Id, user2Id);
-
-        friendsRepository.acceptFriendship(user2Id, user1Id);
-
-        List<Long> friends = friendsRepository.findFriendsById(user1Id);
-
-        assertThat(friends).hasSize(1);
-        assertThat(friends).isEqualTo(List.of(user2Id));
+        assertThat(user2Friends)
+                .extracting(UserDto::getId, UserDto::getLogin)
+                .containsExactly(tuple(user1.getId(), "alice"));
     }
 
-
-    @DisplayName("10. Проверка, что пользователь может удалить друга.")
+    @DisplayName("11. Проверка, что пользователь может удалить друга.")
     @Test
-    void shouldDeleteFriend() {
-        User user1 = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .login("Login1")
-                .birthday(LocalDate.of(2000, 1, 1))
+    void shouldRemoveFriend() {
+        RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
+        String baseUrl = "http://localhost:" + port;
+
+        UserRegisterDto user1Dto = UserRegisterDto.builder()
+                .login("alice")
+                .email("alice@example.com")
+                .name("Alice")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .build();
+        UserRegisterDto user2Dto = UserRegisterDto.builder()
+                .login("bob")
+                .email("bob@example.com")
+                .name("Bob")
+                .birthday(LocalDate.of(1991, 2, 2))
                 .build();
 
-        ResponseEntity<User> response1 = testRestTemplate.postForEntity(
-                "/users",
-                user1,
-                User.class);
+        UserDto user1 = restTemplate.postForEntity(baseUrl + "/users", user1Dto, UserDto.class).getBody();
+        UserDto user2 = restTemplate.postForEntity(baseUrl + "/users", user2Dto, UserDto.class).getBody();
 
-        Long user1Id = response1.getBody().getId();
+        restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user2.getId());
 
-        User user2 = User.builder()
-                .name("Name2")
-                .email("Email2@gmail.com")
-                .login("Login2")
-                .birthday(LocalDate.of(2000, 1, 1))
-                .build();
+        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}",
+                HttpMethod.PATCH, null, Void.class, user2.getId(), user1.getId());
 
-        ResponseEntity<User> response2 = testRestTemplate.postForEntity(
-                "/users",
-                user2,
-                User.class);
+        List<UserDto> user1FriendsBefore = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user1.getId()));
+        assertThat(user1FriendsBefore)
+                .extracting(UserDto::getId)
+                .contains(user2.getId());
 
-        Long user2Id = response2.getBody().getId();
+        restTemplate.delete(baseUrl + "/users/{id}/friends/{friendId}", user1.getId(), user2.getId());
 
-        testRestTemplate.put("/users/{user1Id}/friends/{user2Id}",
-                null,
-                user1Id,
-                user2Id);
+        List<UserDto> user1FriendsAfter = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user1.getId()));
+        List<UserDto> user2FriendsAfter = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user2.getId()));
 
-        friendsRepository.acceptFriendship(user2Id, user1Id);
-
-        List<Long> friends = friendsRepository.findFriendsById(user1Id);
-
-        assertThat(friends).hasSize(1);
-        assertThat(friends).isEqualTo(List.of(user2Id));
-
-        testRestTemplate.delete("/users/{user1Id}/friends/{user2Id}",
-                user1Id,
-                user2Id);
-
-        friends = friendsRepository.findFriendsById(user1Id);
-
-        assertThat(friends).hasSize(0);
+        assertThat(user1FriendsAfter).extracting(UserDto::getId).doesNotContain(user2.getId());
+        assertThat(user2FriendsAfter).extracting(UserDto::getId).doesNotContain(user1.getId());
     }
 
-    @DisplayName("11. Проверка, что возвращается список друзей.")
+    @DisplayName("12. Проверка, что возвращается список друзей.")
     @Test
     void shouldReturnFriendsList() {
-        User user1 = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .login("Login1")
-                .birthday(LocalDate.of(2000, 1, 1))
+        RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
+        String baseUrl = "http://localhost:" + port;
+
+        UserRegisterDto user1Dto = UserRegisterDto.builder()
+                .login("alice")
+                .email("alice@example.com")
+                .name("Alice")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .build();
+        UserRegisterDto user2Dto = UserRegisterDto.builder()
+                .login("bob")
+                .email("bob@example.com")
+                .name("Bob")
+                .birthday(LocalDate.of(1991, 2, 2))
+                .build();
+        UserRegisterDto user3Dto = UserRegisterDto.builder()
+                .login("charlie")
+                .email("charlie@example.com")
+                .name("Charlie")
+                .birthday(LocalDate.of(1992, 3, 3))
                 .build();
 
-        ResponseEntity<User> response1 = testRestTemplate.postForEntity(
-                "/users",
-                user1,
-                User.class);
+        UserDto user1 = restTemplate.postForEntity(baseUrl + "/users", user1Dto, UserDto.class).getBody();
+        UserDto user2 = restTemplate.postForEntity(baseUrl + "/users", user2Dto, UserDto.class).getBody();
+        UserDto user3 = restTemplate.postForEntity(baseUrl + "/users", user3Dto, UserDto.class).getBody();
 
-        Long user1Id = response1.getBody().getId();
+        restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user2.getId());
+        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}",
+                HttpMethod.PATCH, null, Void.class, user2.getId(), user1.getId());
 
-        User user2 = User.builder()
-                .name("Name2")
-                .email("Email2@gmail.com")
-                .login("Login2")
-                .birthday(LocalDate.of(2000, 1, 1))
-                .build();
+        restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user3.getId());
+        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}",
+                HttpMethod.PATCH, null, Void.class, user3.getId(), user1.getId());
 
-        ResponseEntity<User> response2 = testRestTemplate.postForEntity(
-                "/users",
-                user2,
-                User.class);
+        List<UserDto> friendsOfUser1 = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user1.getId()));
 
-        Long user2Id = response2.getBody().getId();
-
-        testRestTemplate.put("/users/{user1Id}/friends/{user2Id}",
-                null,
-                user1Id,
-                user2Id);
-
-        friendsRepository.acceptFriendship(user2Id, user1Id);
-
-        ResponseEntity<User[]> friendsResponse = testRestTemplate.getForEntity(
-                "/users/{user1Id}/friends",
-                User[].class,
-                user1Id);
-
-        assertThat(friendsResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(friendsResponse.getBody()).isNotNull();
-        assertThat(friendsResponse.getBody()).hasSize(1);
-        assertThat(friendsResponse.getBody()[0].getId()).isEqualTo(user2Id);
+        assertThat(friendsOfUser1)
+                .extracting(UserDto::getId, UserDto::getLogin)
+                .containsExactlyInAnyOrder(
+                        tuple(user2.getId(), "bob"),
+                        tuple(user3.getId(), "charlie")
+                );
     }
 
-    @DisplayName("12. Проверка, что возвращается список общих друзей.")
+    @DisplayName("13. Проверка, что возвращается список общих друзей.")
     @Test
-    void shouldReturnCommonFriends() {
-        User user1 = User.builder()
-                .name("Name1")
-                .email("Email1@gmail.com")
-                .login("Login1")
-                .birthday(LocalDate.of(2000, 1, 1))
+    void shouldReturnMutualFriends() {
+        RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
+        String baseUrl = "http://localhost:" + port;
+
+        UserRegisterDto user1Dto = UserRegisterDto.builder()
+                .login("alice")
+                .email("alice@example.com")
+                .name("Alice")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .build();
+        UserRegisterDto user2Dto = UserRegisterDto.builder()
+                .login("bob")
+                .email("bob@example.com")
+                .name("Bob")
+                .birthday(LocalDate.of(1991, 2, 2))
+                .build();
+        UserRegisterDto user3Dto = UserRegisterDto.builder()
+                .login("charlie")
+                .email("charlie@example.com")
+                .name("Charlie")
+                .birthday(LocalDate.of(1992, 3, 3))
+                .build();
+        UserRegisterDto user4Dto = UserRegisterDto.builder()
+                .login("david")
+                .email("david@example.com")
+                .name("David")
+                .birthday(LocalDate.of(1993, 4, 4))
                 .build();
 
-        ResponseEntity<User> response1 = testRestTemplate.postForEntity(
-                "/users",
-                user1,
-                User.class);
+        UserDto user1 = restTemplate.postForEntity(baseUrl + "/users", user1Dto, UserDto.class).getBody();
+        UserDto user2 = restTemplate.postForEntity(baseUrl + "/users", user2Dto, UserDto.class).getBody();
+        UserDto user3 = restTemplate.postForEntity(baseUrl + "/users", user3Dto, UserDto.class).getBody();
+        UserDto user4 = restTemplate.postForEntity(baseUrl + "/users", user4Dto, UserDto.class).getBody();
 
-        Long user1Id = response1.getBody().getId();
+        restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user3.getId());
+        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}", HttpMethod.PATCH, null, Void.class, user3.getId(), user1.getId());
 
-        User user2 = User.builder()
-                .name("Name2")
-                .email("Email2@gmail.com")
-                .login("Login2")
-                .birthday(LocalDate.of(2000, 1, 1))
-                .build();
+        restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user2.getId(), user3.getId());
+        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}", HttpMethod.PATCH, null, Void.class, user3.getId(), user2.getId());
 
-        ResponseEntity<User> response2 = testRestTemplate.postForEntity(
-                "/users",
-                user2,
-                User.class);
+        restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user4.getId());
+        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}", HttpMethod.PATCH, null, Void.class, user4.getId(), user1.getId());
 
-        Long user2Id = response2.getBody().getId();
+        List<UserDto> mutualFriends = List.of(
+                restTemplate.getForObject(baseUrl + "/users/{id}/friends/common/{otherId}", UserDto[].class, user1.getId(), user2.getId())
+        );
 
-        User user3 = User.builder()
-                .name("Name3")
-                .email("Email3@gmail.com")
-                .login("Login3")
-                .birthday(LocalDate.of(2000, 1, 1))
-                .build();
-
-        ResponseEntity<User> response3 = testRestTemplate.postForEntity(
-                "/users",
-                user3,
-                User.class);
-
-        Long user3Id = response3.getBody().getId();
-
-        testRestTemplate.put("/users/{user1Id}/friends/{user3Id}",
-                null,
-                user1Id,
-                user3Id);
-        friendsRepository.acceptFriendship(user3Id, user1Id);
-
-        testRestTemplate.put("/users/{user2Id}/friends/{user3Id}",
-                null,
-                user2Id,
-                user3Id);
-        friendsRepository.acceptFriendship(user3Id, user2Id);
-
-        ResponseEntity<User[]> commonFriendsResponse = testRestTemplate.getForEntity(
-                "/users/{user1Id}/friends/common/{user2Id}",
-                User[].class,
-                user1Id,
-                user2Id);
-
-        assertThat(commonFriendsResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(commonFriendsResponse.getBody()).isNotNull();
-        assertThat(commonFriendsResponse.getBody()).hasSize(1);
-        assertThat(commonFriendsResponse.getBody()[0].getId()).isEqualTo(user3Id);
+        assertThat(mutualFriends)
+                .extracting(UserDto::getId, UserDto::getLogin)
+                .containsExactly(
+                        tuple(user3.getId(), "charlie")
+                );
     }
 }

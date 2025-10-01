@@ -1,32 +1,35 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.dto.UserDto;
 import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
 import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
 import ru.yandex.practicum.filmorate.exception.friend.FriendNotFoundException;
 import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.logging.LogMessages;
+import ru.yandex.practicum.filmorate.mapper.UserMapper;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.repository.friends.InMemoryFriendsRepository;
-import ru.yandex.practicum.filmorate.repository.user.InMemoryUserRepository;
+import ru.yandex.practicum.filmorate.repository.friends.FriendsRepository;
+import ru.yandex.practicum.filmorate.repository.user.UserRepository;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@Slf4j
 @Service
+@Slf4j
 public class UserService {
-    private final InMemoryUserRepository userRepository;
-    private final InMemoryFriendsRepository friendsRepository;
+    private final UserRepository userRepository;
+    private final FriendsRepository friendsRepository;
 
-    public UserService(InMemoryUserRepository userRepository, InMemoryFriendsRepository friendsRepository) {
+    public UserService(@Qualifier("jdbcUserRepository") UserRepository userRepository, @Qualifier("jdbcFriendsRepository") FriendsRepository friendsRepository) {
         this.userRepository = userRepository;
         this.friendsRepository = friendsRepository;
     }
 
-    public User registerUser(UserRegisterDto userRegisterDto) {
+    public UserDto registerUser(UserRegisterDto userRegisterDto) {
         log.trace(LogMessages.USER_ADD, userRegisterDto);
 
         User user = User.builder()
@@ -37,26 +40,28 @@ public class UserService {
                 .build();
 
         log.debug(LogMessages.USER_SAVE_STARTED, user);
-        User registeredUser = userRepository.save(user);
+        User registeredUser = userRepository.insert(user);
         log.info(LogMessages.USER_SAVE_SUCCESS, registeredUser);
-        return registeredUser;
+        return UserMapper.mapToUserDto(registeredUser);
     }
 
-    public User getUser(Long id) {
-        User user = userRepository.findById(id);
+    public UserDto getUser(Long id) {
+        User user = userRepository.findOneById(id);
         if (user == null) {
             throw new UserNotFoundException(id);
         }
-        return user;
+        return UserMapper.mapToUserDto(user);
     }
 
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserDto> getAllUsers() {
+        return userRepository.findMany().stream()
+                .map(UserMapper::mapToUserDto)
+                .toList();
     }
 
-    public User updateUser(UserUpdateDto userUpdateDto, Long id) {
+    public UserDto updateUser(UserUpdateDto userUpdateDto, Long id) {
         log.trace(LogMessages.USER_UPDATE, userUpdateDto);
-        User user = userRepository.findById(id);
+        User user = userRepository.findOneById(id);
         if (user == null) {
             log.warn(LogMessages.USER_UPDATE_NOT_FOUND, id);
             throw new UserNotFoundException(id);
@@ -67,38 +72,41 @@ public class UserService {
         user.setBirthday(userUpdateDto.getBirthday());
         user.setEmail(userUpdateDto.getEmail());
 
-        User updatedUser = userRepository.update(user);
-        log.info(LogMessages.USER_UPDATE_SUCCESS, updatedUser);
-        return updatedUser;
+        int updatedRows = userRepository.update(user);
+        log.info(LogMessages.USER_UPDATE_SUCCESS, user.getId());
+        return UserMapper.mapToUserDto(user);
     }
 
     public void deleteUser(Long id) {
         log.trace(LogMessages.USER_DELETE, id);
-        User user = userRepository.findById(id);
+        User user = userRepository.findOneById(id);
         if (user == null) {
             log.warn(LogMessages.USER_DELETE_NOT_FOUND, id);
             throw new UserNotFoundException(id);
         }
         log.debug(LogMessages.USER_DELETE_STARTED, id);
-        User deletedUser = userRepository.deleteById(id);
-        log.info(LogMessages.USER_DELETE_SUCCESS, deletedUser);
+        userRepository.deleteOneById(id);
+        log.info(LogMessages.USER_DELETE_SUCCESS, id);
     }
 
-    public List<User> getUserFriends(Long id) {
+    public List<UserDto> getUserFriends(Long id) {
         List<Long> friendIds = friendsRepository.findFriendsById(id);
-        return userRepository.findByIds(friendIds);
+        List<User> friends = userRepository.findManyByIds(friendIds);
+        return friends.stream().map(UserMapper::mapToUserDto).toList();
     }
 
-    public List<User> getMutualFriends(Long id, Long otherId) {
+    public List<UserDto> getMutualFriends(Long id, Long otherId) {
         List<Long> friendIdsUser = friendsRepository.findFriendsById(id);
-        List<User> friendsUser = userRepository.findByIds(friendIdsUser);
+        List<User> friendsUser = userRepository.findManyByIds(friendIdsUser);
         List<Long> friendIdsOtherUser = friendsRepository.findFriendsById(otherId);
 
         Set<Long> otherIds = new HashSet<>(friendIdsOtherUser);
 
-        return friendsUser.stream()
+        List<User> listMutualFriends = friendsUser.stream()
                 .filter(user -> otherIds.contains(user.getId()))
                 .toList();
+
+        return listMutualFriends.stream().map(UserMapper::mapToUserDto).toList();
     }
 
     public void sendUserFriendRequest(Long userId, Long friendId) {

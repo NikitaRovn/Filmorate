@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,40 +11,37 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import ru.yandex.practicum.filmorate.dto.FilmDto;
 import ru.yandex.practicum.filmorate.dto.FilmRegisterDto;
 import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
-import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 
 import java.util.List;
 import java.util.Set;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/films")
 public class FilmController {
     private final FilmService filmService;
 
-    public FilmController(FilmService filmService) {
-        this.filmService = filmService;
-    }
-
     @GetMapping
-    public List<Film> getAllFilms() {
+    public List<FilmDto> getAllFilms() {
         return filmService.getAllFilms();
     }
 
     @GetMapping("/{id}")
-    public Film getFilm(@PathVariable Long id) {
+    public FilmDto getFilm(@PathVariable Long id) {
         return filmService.getFilm(id);
     }
 
     @PostMapping
-    public Film addFilm(@Valid @RequestBody FilmRegisterDto filmRegisterDto) {
+    public FilmDto addFilm(@Valid @RequestBody FilmRegisterDto filmRegisterDto) {
         return filmService.addFilm(filmRegisterDto);
     }
 
     @PutMapping("/{id}")
-    public Film updateFilm(@Valid @RequestBody FilmUpdateDto filmUpdateDto, @PathVariable Long id) {
+    public FilmDto updateFilm(@Valid @RequestBody FilmUpdateDto filmUpdateDto, @PathVariable Long id) {
         return filmService.updateFilm(filmUpdateDto, id);
     }
 
@@ -53,17 +51,22 @@ public class FilmController {
     }
 
     @GetMapping("/popular")
-    public List<Film> getMostLikedFilms(@RequestParam(defaultValue = "10") Integer count) {
+    public List<FilmDto> getMostLikedFilms(@RequestParam(defaultValue = "10") Integer count) {
         return filmService.getMostLikedFilms(count);
     }
 
     @PutMapping("/{id}/like/{userId}")
-    public Set<Long> addLike(@PathVariable Long id, @PathVariable Long userId) {
-        return filmService.addLike(id, userId);
+    public void addLike(@PathVariable Long id, @PathVariable Long userId) {
+        filmService.addLike(id, userId);
     }
 
     @DeleteMapping("/{id}/like/{userId}")
-    public Set<Long> deleteLike(@PathVariable Long id, @PathVariable Long userId) {
-        return filmService.deleteLike(id, userId);
+    public void deleteLike(@PathVariable Long id, @PathVariable Long userId) {
+        filmService.deleteLike(id, userId);
+    }
+
+    @GetMapping("/{id}/likes")
+    public Set<Long> getLikes(@PathVariable Long id) {
+        return filmService.getLikes(id);
     }
 }

@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.repository.film;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Film;
 
@@ -10,8 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 
-@Repository
-@Profile("dev")
+@Repository("inMemoryFilmRepository")
 public class InMemoryFilmRepository implements FilmRepository {
     private final Map<Long, Film> films = new HashMap<>();
     private Long lastId = 1L;
@@ -25,7 +23,7 @@ public class InMemoryFilmRepository implements FilmRepository {
     }
 
     @Override
-    public Film findById(Long id) {
+    public Film findOneById(Long id) {
         return films.get(id);
     }
 
@@ -35,19 +33,19 @@ public class InMemoryFilmRepository implements FilmRepository {
     }
 
     @Override
-    public Film update(Film film) {
+    public int update(Film film) {
         Long id = film.getId();
         films.put(id, film);
-        return films.get(id);
+        return 0;
     }
 
     @Override
-    public Film deleteById(Long id) {
-        return films.remove(id);
+    public void deleteOneById(Long id) {
+        films.remove(id);
     }
 
     @Override
-    public void clear() {
+    public void cleanup() {
         films.clear();
         lastId = 1L;
     }

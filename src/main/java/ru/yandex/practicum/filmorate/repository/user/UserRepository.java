@@ -5,17 +5,17 @@ import ru.yandex.practicum.filmorate.model.User;
 import java.util.List;
 
 public interface UserRepository {
-    User save(User user);
+    User insert(User user);
 
-    User findById(Long id);
+    User findOneById(Long id);
 
-    List<User> findByIds(List<Long> ids);
+    List<User> findManyByIds(List<Long> ids);
 
-    List<User> findAll();
+    List<User> findMany();
 
-    User update(User user);
+    int update(User user);
 
-    User deleteById(Long id);
+    void deleteOneById(Long id);
 
-    void clear();
+    void cleanup();
 }
