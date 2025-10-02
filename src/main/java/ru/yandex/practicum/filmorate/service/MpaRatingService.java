@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.MpaRatingDto;
-import ru.yandex.practicum.filmorate.exception.mpa_rating.MpaRatingNotFoundException;
 import ru.yandex.practicum.filmorate.mapper.MpaRatingMapper;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 import ru.yandex.practicum.filmorate.repository.mpa_rating.MpaRatingRepository;

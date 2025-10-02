@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.service;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -19,7 +18,6 @@ import ru.yandex.practicum.filmorate.repository.mpa_rating.MpaRatingRepository;
 import ru.yandex.practicum.filmorate.repository.user.UserRepository;
 
 import java.util.Collection;
-import java.util.List;
 
 @Component
 public class EntityValidator {
