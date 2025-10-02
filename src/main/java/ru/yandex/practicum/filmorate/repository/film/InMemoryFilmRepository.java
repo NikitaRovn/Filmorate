@@ -33,10 +33,10 @@ public class InMemoryFilmRepository implements FilmRepository {
     }
 
     @Override
-    public int update(Film film) {
+    public Film update(Film film) {
         Long id = film.getId();
         films.put(id, film);
-        return 0;
+        return null;
     }
 
     @Override

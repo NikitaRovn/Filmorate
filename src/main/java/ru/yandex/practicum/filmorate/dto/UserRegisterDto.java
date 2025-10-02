@@ -13,7 +13,6 @@ import java.time.LocalDate;
 @Data
 @Builder
 public class UserRegisterDto {
-
     @NotNull(message = "Поле email должно быть передано.")
     @NotBlank(message = "Поле email не должно быть пустой строкой или строкой из пробелов.")
     @Email(message = "Поле email должно быть в корректном формате.")

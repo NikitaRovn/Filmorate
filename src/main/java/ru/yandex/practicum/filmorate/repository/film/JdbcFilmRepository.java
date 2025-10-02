@@ -12,7 +12,10 @@ import ru.yandex.practicum.filmorate.repository.base.JdbcBaseRepository;
 
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Repository("jdbcFilmRepository")
 @Profile("dev")
@@ -67,30 +70,34 @@ public class JdbcFilmRepository extends JdbcBaseRepository<Film> implements Film
                 film.getMpaRating().getId());
         film.setId(id);
 
-        String query = "INSERT INTO FILM_GENRES(film_id, genre_id, sort_order) VALUES (?, ?, ?)";
-        List<Object[]> batch = new ArrayList<>();
-        int sortOrder = 1;
-        for (Genre genre : film.getGenres()) {
-            batch.add(new Object[]{film.getId(), genre.getId(), sortOrder++});
-        }
-        jdbc.batchUpdate(query, batch);
+        saveFilmGenres(id, film.getGenres());
 
-        return findOneById(film.getId());
+        film.setGenres(loadGenresForFilms(List.of(id)).getOrDefault(id, List.of()));
+        return film;
     }
 
     @Override
     public Film findOneById(Long id) {
-        return jdbc.query(FIND_BY_ID_QUERY, filmExtractor, id);
+        Film film = jdbc.query(FIND_BY_ID_QUERY, filmExtractor, id);
+        if (film == null) return null;
+        film.setGenres(loadGenresForFilms(List.of(id)).getOrDefault(id, List.of()));
+        return film;
     }
 
     @Override
     public List<Film> findAll() {
-        return jdbc.query(FIND_ALL_QUERY, new FilmListExtractor(filmExtractor));
+        List<Film> films = jdbc.query(FIND_ALL_QUERY, new FilmListExtractor(filmExtractor));
+        if (films.isEmpty()) return films;
+
+        Map<Long, List<Genre>> genreMap = loadGenresForFilms(
+                films.stream().map(Film::getId).toList());
+        films.forEach(f -> f.setGenres(genreMap.getOrDefault(f.getId(), List.of())));
+        return films;
     }
 
     @Override
-    public int update(Film film) {
-        int updatedRows = update(UPDATE_QUERY,
+    public Film update(Film film) {
+        update(UPDATE_QUERY,
                 film.getName(),
                 film.getDescription(),
                 film.getReleaseDate(),
@@ -98,28 +105,60 @@ public class JdbcFilmRepository extends JdbcBaseRepository<Film> implements Film
                 film.getMpaRating().getId(),
                 film.getId());
 
-        String deleteGenresQuery = "DELETE FROM film_genres WHERE film_id = ?";
-        jdbc.update(deleteGenresQuery, film.getId());
+        saveFilmGenres(film.getId(), film.getGenres());
 
-        String insertGenreQuery = "INSERT INTO film_genres(film_id, genre_id, sort_order) VALUES (?, ?, ?)";
-        List<Object[]> batch = new ArrayList<>();
-        int sortOrder = 1;
-        for (Genre genre : film.getGenres()) {
-            batch.add(new Object[]{film.getId(), genre.getId(), sortOrder++});
-        }
-        jdbc.batchUpdate(insertGenreQuery, batch);
+        film.setGenres(loadGenresForFilms(List.of(film.getId()))
+                .getOrDefault(film.getId(), List.of()));
 
-        return updatedRows;
+        return film;
     }
 
     @Override
-    public int deleteOneById(Long id) {
-        jdbc.update("DELETE FROM film_genres WHERE film_id = ?", id);
-        return jdbc.update("DELETE FROM films WHERE id = ?", id);
+    public int deleteOneById(Long filmId) {
+        jdbc.update("DELETE FROM film_genres WHERE film_id = ?", filmId);
+        return jdbc.update("DELETE FROM films WHERE id = ?", filmId);
     }
 
     @Override
     public void cleanup() {
 
+    }
+
+    void saveFilmGenres(Long filmId, List<Genre> genres) {
+        genres = (genres == null) ? List.of() : genres;
+
+        jdbc.update("DELETE FROM film_genres WHERE film_id = ?", filmId);
+
+        String sql = "INSERT INTO film_genres(film_id, genre_id, sort_order) VALUES (?, ?, ?)";
+        List<Object[]> batch = new ArrayList<>();
+        int order = 1;
+        for (Genre g : genres) {
+            batch.add(new Object[]{filmId, g.getId(), order++});
+        }
+        jdbc.batchUpdate(sql, batch);
+    }
+
+    Map<Long, List<Genre>> loadGenresForFilms(List<Long> filmIds) {
+        if (filmIds.isEmpty()) return Map.of();
+        String in = filmIds.stream().map(String::valueOf)
+                .collect(Collectors.joining(","));
+        String sql = """
+        SELECT fg.film_id, g.id, g.name
+        FROM film_genres fg
+        JOIN genres g ON fg.genre_id = g.id
+        WHERE fg.film_id IN (%s)
+        ORDER BY fg.film_id, fg.sort_order
+        """.formatted(in);
+
+        Map<Long, List<Genre>> map = new LinkedHashMap<>();
+        jdbc.query(sql, rs -> {
+            Long filmId = rs.getLong("film_id");
+            map.computeIfAbsent(filmId, k -> new ArrayList<>())
+                    .add(Genre.builder()
+                            .id(rs.getLong("id"))
+                            .name(rs.getString("name"))
+                            .build());
+        });
+        return map;
     }
 }

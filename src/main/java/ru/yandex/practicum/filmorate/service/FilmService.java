@@ -12,6 +12,7 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 import ru.yandex.practicum.filmorate.repository.film.FilmRepository;
+import ru.yandex.practicum.filmorate.repository.genre.GenreRepository;
 import ru.yandex.practicum.filmorate.repository.likes.LikesRepository;
 
 import java.util.List;
@@ -23,31 +24,31 @@ public class FilmService {
     private final FilmRepository filmRepository;
     private final LikesRepository likesRepository;
     private final EntityValidator entityValidator;
+    private final GenreRepository genreRepository;
 
     public FilmService(@Qualifier("jdbcFilmRepository") FilmRepository filmRepository,
                        @Qualifier("jdbcMemoryLikesRepository") LikesRepository likesRepository,
-                       EntityValidator entityValidator) {
+                       EntityValidator entityValidator,
+                       GenreRepository genreRepository) {
         this.filmRepository = filmRepository;
         this.likesRepository = likesRepository;
         this.entityValidator = entityValidator;
+        this.genreRepository = genreRepository;
     }
 
     public FilmDto addFilm(FilmRegisterDto filmRegisterDto) {
         log.trace(LogMessages.FILM_ADD, filmRegisterDto);
+
+        MpaRating mpaRating = entityValidator.validateMpaRatingExists(filmRegisterDto.getMpaRatingId());
+        List<Genre> genres = genreRepository.findManyByIds(filmRegisterDto.getGenresIds());
 
         Film film = Film.builder()
                 .name(filmRegisterDto.getName())
                 .description(filmRegisterDto.getDescription())
                 .releaseDate(filmRegisterDto.getReleaseDate())
                 .duration(filmRegisterDto.getDuration())
-                .mpaRating(MpaRating.builder()
-                        .id(filmRegisterDto.getMpaRatingId())
-                        .build())
-                .genres(filmRegisterDto.getGenresIds().stream()
-                        .map(id -> Genre.builder()
-                                .id(id)
-                                .build())
-                        .toList())
+                .mpaRating(mpaRating)
+                .genres(genres)
                 .build();
 
         log.debug(LogMessages.FILM_SAVE_STARTED, film);
@@ -72,14 +73,14 @@ public class FilmService {
         log.trace(LogMessages.FILM_UPDATE, filmUpdateDto);
         Film film = entityValidator.validateFilmExists(id);
         log.debug(LogMessages.FILM_UPDATE_STARTED, id);
+        MpaRating mpaRating = entityValidator.validateMpaRatingExists(filmUpdateDto.getMpaRatingId());
+        List<Genre> genres = genreRepository.findManyByIds(filmUpdateDto.getGenresIds());
         film.setName(filmUpdateDto.getName());
         film.setDescription(filmUpdateDto.getDescription());
         film.setReleaseDate(filmUpdateDto.getReleaseDate());
         film.setDuration(filmUpdateDto.getDuration());
-        film.setMpaRating(MpaRating.builder().id(filmUpdateDto.getMpaRatingId()).build());
-        film.setGenres(filmUpdateDto.getGenresIds().stream()
-                .map(id1 -> Genre.builder().id(id1).build())
-                .toList());
+        film.setMpaRating(mpaRating);
+        film.setGenres(genres);
 
         filmRepository.update(film);
         log.info(LogMessages.FILM_UPDATE_SUCCESS, id);

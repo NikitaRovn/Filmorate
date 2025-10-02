@@ -6,6 +6,6 @@ import lombok.Data;
 @Embeddable
 @Data
 public class FilmGenreId {
-    private Long userId;
     private Long filmId;
+    private Long genreId;
 }

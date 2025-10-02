@@ -11,7 +11,7 @@ public interface FilmRepository {
 
     List<Film> findAll();
 
-    int update(Film film);
+    Film update(Film film);
 
     int deleteOneById(Long id);
 
