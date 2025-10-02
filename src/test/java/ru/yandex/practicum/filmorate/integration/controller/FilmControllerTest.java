@@ -6,11 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.dto.FilmDto;
 import ru.yandex.practicum.filmorate.dto.FilmRegisterDto;
+import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -33,6 +35,17 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 // 9. Проверка, что пользователь может ставить лайк фильму.
 // 10. Проверка, что пользователь может удалять лайк.
 // 11. Проверка, что выводится список фильмов по лайкам.
+// 12. Проверка, что возвращается фильм по ID.
+// 13. Проверка, что фильм обновляется.
+// 14. Проверка, что фильм удаляется.
+// 15. Проверка, что не обновляет несуществующий фильм.
+// 16. Проверка, что не удаляет несуществующий фильм.
+// 17. Проверка, что не обновляет фильм с пустым названием.
+// 18. Проверка, что не обновляет фильм с длинным (200+) названием.
+// 19. Проверка, что не обновляет фильм с отрицательной длительностью.
+// 20. Проверка, что не лайкает несуществующий фильм.
+// 21. Проверка, что не лайкает фильм несуществующим пользователем.
+// 22. Проверка, что если лайков нет - возвращается пустой список популярных фильмов.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestDatabase
@@ -54,9 +67,9 @@ class FilmControllerTest {
                 .genresIds(List.of(2L, 4L, 5L))
                 .build();
 
-        var response = restTemplate.postForEntity("/films", dto, Film.class);
+        ResponseEntity<Film> response = restTemplate.postForEntity("/films", dto, Film.class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(200);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         Film savedFilm = response.getBody();
         assertThat(savedFilm).isNotNull();
@@ -87,11 +100,10 @@ class FilmControllerTest {
                 .genresIds(List.of(1L, 2L))
                 .build();
 
-        var response = restTemplate.postForEntity("/films", dto, String.class);
+        ResponseEntity<String> response = restTemplate.postForEntity("/films", dto, String.class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         String body = response.getBody();
-        System.out.println("Ответ при ошибке валидации: " + body);
         assertThat(body).isNotNull().contains("name");
     }
 
@@ -110,9 +122,8 @@ class FilmControllerTest {
 
         ResponseEntity<String> response = restTemplate.postForEntity("/films", dto, String.class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         String body = response.getBody();
-        System.out.println("Ответ при ошибке валидации (длина > 200): " + body);
         assertThat(body).isNotNull().contains("description");
     }
 
@@ -131,7 +142,7 @@ class FilmControllerTest {
 
         ResponseEntity<Film> response = restTemplate.postForEntity("/films", dto, Film.class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(200);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Film savedFilm = response.getBody();
         assertThat(savedFilm).isNotNull();
         assertThat(savedFilm.getDescription()).isEqualTo(exactDescription);
@@ -149,10 +160,9 @@ class FilmControllerTest {
                 .genresIds(List.of(1L))
                 .build();
 
-        var response = restTemplate.postForEntity("/films", dto, String.class);
+        ResponseEntity<String> response = restTemplate.postForEntity("/films", dto, String.class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(400);
-        System.out.println("Ответ при ошибке валидации (слишком ранняя дата): " + response.getBody());
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("releaseDate");
     }
 
@@ -168,10 +178,9 @@ class FilmControllerTest {
                 .genresIds(List.of(1L))
                 .build();
 
-        var response = restTemplate.postForEntity("/films", dto, String.class);
+        ResponseEntity<String> response = restTemplate.postForEntity("/films", dto, String.class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(400);
-        System.out.println("Ответ при ошибке валидации (нулевая длительность): " + response.getBody());
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("duration");
     }
 
@@ -187,10 +196,9 @@ class FilmControllerTest {
                 .genresIds(List.of(1L))
                 .build();
 
-        var response = restTemplate.postForEntity("/films", dto, String.class);
+        ResponseEntity<String> response = restTemplate.postForEntity("/films", dto, String.class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(400);
-        System.out.println("Ответ при ошибке валидации (отрицательная длительность): " + response.getBody());
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("duration");
     }
 
@@ -229,7 +237,7 @@ class FilmControllerTest {
         restTemplate.postForEntity("/films", dto3, Film.class);
 
         ResponseEntity<Film[]> response = restTemplate.getForEntity("/films", Film[].class);
-        assertThat(response.getStatusCodeValue()).isEqualTo(200);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         Film[] films = response.getBody();
         assertThat(films).isNotNull();
@@ -250,7 +258,7 @@ class FilmControllerTest {
                 .build();
 
         ResponseEntity<User> userResponse = restTemplate.postForEntity("/users", userDto, User.class);
-        assertThat(userResponse.getStatusCodeValue()).isEqualTo(200);
+        assertThat(userResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         User savedUser = userResponse.getBody();
         assertThat(savedUser).isNotNull();
         Long userId = savedUser.getId();
@@ -265,7 +273,7 @@ class FilmControllerTest {
                 .build();
 
         ResponseEntity<Film> filmResponse = restTemplate.postForEntity("/films", filmDto, Film.class);
-        assertThat(filmResponse.getStatusCodeValue()).isEqualTo(200);
+        assertThat(filmResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         Film savedFilm = filmResponse.getBody();
         assertThat(savedFilm).isNotNull();
         Long filmId = savedFilm.getId();
@@ -273,7 +281,7 @@ class FilmControllerTest {
         restTemplate.put("/films/{id}/like/{userId}", null, filmId, userId);
 
         ResponseEntity<Long[]> likesResponse = restTemplate.getForEntity("/films/{id}/likes", Long[].class, filmId);
-        assertThat(likesResponse.getStatusCodeValue()).isEqualTo(200);
+        assertThat(likesResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         Long[] likes = likesResponse.getBody();
         assertThat(likes).isNotNull().contains(userId);
     }
@@ -290,7 +298,7 @@ class FilmControllerTest {
                 .build();
 
         ResponseEntity<User> userResponse = restTemplate.postForEntity("/users", userDto, User.class);
-        assertThat(userResponse.getStatusCodeValue()).isEqualTo(200);
+        assertThat(userResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         User savedUser = userResponse.getBody();
         assertThat(savedUser).isNotNull();
         Long userId = savedUser.getId();
@@ -305,7 +313,7 @@ class FilmControllerTest {
                 .build();
 
         ResponseEntity<Film> filmResponse = restTemplate.postForEntity("/films", filmDto, Film.class);
-        assertThat(filmResponse.getStatusCodeValue()).isEqualTo(200);
+        assertThat(filmResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         Film savedFilm = filmResponse.getBody();
         assertThat(savedFilm).isNotNull();
         Long filmId = savedFilm.getId();
@@ -315,7 +323,7 @@ class FilmControllerTest {
         restTemplate.delete("/films/{id}/like/{userId}", filmId, userId);
 
         ResponseEntity<Long[]> likesResponse = restTemplate.getForEntity("/films/{id}/likes", Long[].class, filmId);
-        assertThat(likesResponse.getStatusCodeValue()).isEqualTo(200);
+        assertThat(likesResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         Long[] likes = likesResponse.getBody();
         assertThat(likes).isNotNull().doesNotContain(userId);
     }
@@ -366,7 +374,7 @@ class FilmControllerTest {
         restTemplate.put("/films/{id}/like/{userId}", null, filmId2, userId1);
 
         ResponseEntity<FilmDto[]> response = restTemplate.getForEntity("/films/popular?count=2", FilmDto[].class);
-        assertThat(response.getStatusCodeValue()).isEqualTo(200);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         FilmDto[] popularFilms = response.getBody();
         assertThat(popularFilms).isNotNull();
@@ -374,6 +382,364 @@ class FilmControllerTest {
 
         assertThat(popularFilms[0].getId()).isEqualTo(filmId1);
         assertThat(popularFilms[1].getId()).isEqualTo(filmId2);
+    }
+
+    @DisplayName("12. Проверка, что возвращается фильм по ID.")
+    @Test
+    void shouldReturnFilmById() {
+        FilmRegisterDto dto = FilmRegisterDto.builder()
+                .name("Фильм для проверки GET по ID")
+                .description("Описание фильма")
+                .releaseDate(LocalDate.of(2021, 5, 10))
+                .duration(90)
+                .mpaRatingId(2L)
+                .genresIds(List.of(1L, 3L))
+                .build();
+
+        ResponseEntity<Film> postResponse = restTemplate.postForEntity("/films", dto, Film.class);
+        assertThat(postResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Film savedFilm = postResponse.getBody();
+        assertThat(savedFilm).isNotNull();
+        Long filmId = savedFilm.getId();
+
+        ResponseEntity<Film> getResponse = restTemplate.getForEntity("/films/{id}", Film.class, filmId);
+        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        Film returnedFilm = getResponse.getBody();
+        assertThat(returnedFilm).isNotNull();
+        assertThat(returnedFilm.getId()).isEqualTo(filmId);
+        assertThat(returnedFilm.getName()).isEqualTo(dto.getName());
+        assertThat(returnedFilm.getDescription()).isEqualTo(dto.getDescription());
+        assertThat(returnedFilm.getDuration()).isEqualTo(dto.getDuration());
+
+        assertThat(returnedFilm.getGenres())
+                .isNotNull()
+                .extracting(Genre::getId)
+                .containsAll(dto.getGenresIds());
+
+        assertThat(returnedFilm.getMpaRating()).isNotNull();
+        assertThat(returnedFilm.getMpaRating().getId()).isEqualTo(dto.getMpaRatingId());
+    }
+
+    @DisplayName("13. Проверка, что фильм обновляется.")
+    @Test
+    void shouldUpdateFilm() {
+        FilmRegisterDto originalDto = FilmRegisterDto.builder()
+                .name("Оригинальное название")
+                .description("Оригинальное описание")
+                .releaseDate(LocalDate.of(2020, 1, 1))
+                .duration(100)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L, 2L))
+                .build();
+
+        ResponseEntity<Film> postResponse = restTemplate.postForEntity("/films", originalDto, Film.class);
+        assertThat(postResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Film savedFilm = postResponse.getBody();
+        assertThat(savedFilm).isNotNull();
+        Long filmId = savedFilm.getId();
+
+        FilmRegisterDto updateDto = FilmRegisterDto.builder()
+                .name("Обновлённое название")
+                .description("Обновлённое описание")
+                .releaseDate(LocalDate.of(2021, 2, 2))
+                .duration(120)
+                .mpaRatingId(2L)
+                .genresIds(List.of(2L, 3L))
+                .build();
+
+        restTemplate.put("/films/{id}", updateDto, filmId);
+
+        ResponseEntity<Film> getResponse = restTemplate.getForEntity("/films/{id}", Film.class, filmId);
+        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Film updatedFilm = getResponse.getBody();
+        assertThat(updatedFilm).isNotNull();
+        assertThat(updatedFilm.getId()).isEqualTo(filmId);
+        assertThat(updatedFilm.getName()).isEqualTo(updateDto.getName());
+        assertThat(updatedFilm.getDescription()).isEqualTo(updateDto.getDescription());
+        assertThat(updatedFilm.getDuration()).isEqualTo(updateDto.getDuration());
+
+        assertThat(updatedFilm.getGenres())
+                .isNotNull()
+                .extracting(Genre::getId)
+                .containsAll(updateDto.getGenresIds());
+
+        assertThat(updatedFilm.getMpaRating()).isNotNull();
+        assertThat(updatedFilm.getMpaRating().getId()).isEqualTo(updateDto.getMpaRatingId());
+    }
+
+    @DisplayName("14. Проверка, что фильм удаляется.")
+    @Test
+    void shouldDeleteFilm() {
+        FilmRegisterDto dto = FilmRegisterDto.builder()
+                .name("Фильм для удаления")
+                .description("Описание")
+                .releaseDate(LocalDate.of(2020, 1, 1))
+                .duration(100)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L, 2L))
+                .build();
+
+        ResponseEntity<Film> postResponse = restTemplate.postForEntity("/films", dto, Film.class);
+        assertThat(postResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Film savedFilm = postResponse.getBody();
+        assertThat(savedFilm).isNotNull();
+        Long filmId = savedFilm.getId();
+
+        restTemplate.delete("/films/{id}", filmId);
+
+        ResponseEntity<String> getResponse = restTemplate.getForEntity("/films/{id}", String.class, filmId);
+        assertThat(getResponse.getStatusCodeValue()).isEqualTo(404);
+        assertThat(getResponse.getBody()).contains("Фильм не найден.");
+    }
+
+    @DisplayName("15. Проверка, что не обновляет несуществующий фильм.")
+    @Test
+    void shouldReturn404WhenUpdatingNonExistingFilm() {
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .name("Обновлённое название")
+                .description("Обновлённое описание")
+                .releaseDate(LocalDate.of(2021, 2, 2))
+                .duration(120)
+                .mpaRatingId(2L)
+                .genresIds(List.of(2L, 3L))
+                .build();
+
+        Long nonExistingFilmId = 999L;
+
+        ResponseEntity<String> response = restTemplate
+                .exchange("/films/{id}",
+                        org.springframework.http.HttpMethod.PUT,
+                        new org.springframework.http.HttpEntity<>(updateDto),
+                        String.class,
+                        nonExistingFilmId);
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(404);
+        assertThat(response.getBody()).contains("Фильм не найден.");
+    }
+
+    @DisplayName("16. Проверка, что не удаляет несуществующий фильм.")
+    @Test
+    void shouldReturn404WhenDeletingNonExistingFilm() {
+        Long nonExistingFilmId = 999L;
+
+        ResponseEntity<String> response = restTemplate
+                .exchange("/films/{id}",
+                        org.springframework.http.HttpMethod.DELETE,
+                        null,
+                        String.class,
+                        nonExistingFilmId);
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(404);
+        assertThat(response.getBody()).contains("Фильм не найден.");
+    }
+
+    @DisplayName("17. Проверка, что не обновляет фильм с пустым названием.")
+    @Test
+    void shouldReturn400WhenUpdatingFilmWithEmptyName() {
+        FilmRegisterDto originalDto = FilmRegisterDto.builder()
+                .name("Оригинальное название")
+                .description("Описание")
+                .releaseDate(LocalDate.of(2020, 1, 1))
+                .duration(100)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L))
+                .build();
+
+        Film savedFilm = restTemplate.postForEntity("/films", originalDto, Film.class).getBody();
+        assert savedFilm != null;
+        Long filmId = savedFilm.getId();
+
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .name("   ")
+                .description("Обновлённое описание")
+                .releaseDate(LocalDate.of(2021, 1, 1))
+                .duration(120)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L))
+                .build();
+
+        ResponseEntity<String> response = restTemplate
+                .exchange("/films/{id}",
+                        org.springframework.http.HttpMethod.PUT,
+                        new org.springframework.http.HttpEntity<>(updateDto),
+                        String.class,
+                        filmId);
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+        assertThat(response.getBody()).contains("name");
+    }
+
+    @DisplayName("18. Проверка, что не обновляет фильм с длинным (200+) названием.")
+    @Test
+    void shouldReturn400WhenUpdatingFilmWithTooLongDescription() {
+        FilmRegisterDto originalDto = FilmRegisterDto.builder()
+                .name("Оригинальный фильм")
+                .description("Описание")
+                .releaseDate(LocalDate.of(2020, 1, 1))
+                .duration(100)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L))
+                .build();
+
+        Film savedFilm = restTemplate.postForEntity("/films", originalDto, Film.class).getBody();
+        assert savedFilm != null;
+        Long filmId = savedFilm.getId();
+
+        String longDescription = "A".repeat(201);
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .name("Фильм")
+                .description(longDescription)
+                .releaseDate(LocalDate.of(2021, 1, 1))
+                .duration(120)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L))
+                .build();
+
+        ResponseEntity<String> response = restTemplate
+                .exchange("/films/{id}",
+                        org.springframework.http.HttpMethod.PUT,
+                        new org.springframework.http.HttpEntity<>(updateDto),
+                        String.class,
+                        filmId);
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+        assertThat(response.getBody()).contains("description");
+    }
+
+    @DisplayName("19. Проверка, что не обновляет фильм с отрицательной длительностью.")
+    @Test
+    void shouldReturn400WhenUpdatingFilmWithNegativeDuration() {
+        FilmRegisterDto originalDto = FilmRegisterDto.builder()
+                .name("Оригинальный фильм")
+                .description("Описание")
+                .releaseDate(LocalDate.of(2020, 1, 1))
+                .duration(100)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L))
+                .build();
+
+        Film savedFilm = restTemplate.postForEntity("/films", originalDto, Film.class).getBody();
+        assert savedFilm != null;
+        Long filmId = savedFilm.getId();
+
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .name("Фильм")
+                .description("Описание")
+                .releaseDate(LocalDate.of(2021, 1, 1))
+                .duration(-50)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L))
+                .build();
+
+        ResponseEntity<String> response = restTemplate
+                .exchange("/films/{id}",
+                        org.springframework.http.HttpMethod.PUT,
+                        new org.springframework.http.HttpEntity<>(updateDto),
+                        String.class,
+                        filmId);
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(400);
+        assertThat(response.getBody()).contains("duration");
+    }
+
+    @DisplayName("20. Проверка, что не лайкает несуществующий фильм.")
+    @Test
+    void shouldReturn404WhenLikingNonExistingFilm() {
+        UserRegisterDto userDto = UserRegisterDto.builder()
+                .email("user@example.com")
+                .login("userlogin")
+                .name("User Name")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .build();
+
+        Long userId = restTemplate.postForEntity("/users", userDto, User.class).getBody().getId();
+
+        Long nonExistingFilmId = 999L;
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/films/{id}/like/{userId}",
+                org.springframework.http.HttpMethod.PUT,
+                null,
+                String.class,
+                nonExistingFilmId,
+                userId
+        );
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(404);
+        assertThat(response.getBody()).contains("Фильм не найден.");
+    }
+
+    @DisplayName("21. Проверка, что не лайкает фильм несуществующим пользователем.")
+    @Test
+    void shouldReturn404WhenLikingByNonExistingUser() {
+        FilmRegisterDto filmDto = FilmRegisterDto.builder()
+                .name("Фильм")
+                .description("Описание")
+                .releaseDate(LocalDate.of(2020, 1, 1))
+                .duration(100)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L))
+                .build();
+
+        Long filmId = restTemplate.postForEntity("/films", filmDto, Film.class).getBody().getId();
+
+        Long nonExistingUserId = 999L;
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/films/{id}/like/{userId}",
+                org.springframework.http.HttpMethod.PUT,
+                null,
+                String.class,
+                filmId,
+                nonExistingUserId
+        );
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(404);
+        assertThat(response.getBody()).contains("Пользователь не найден.");
+    }
+
+    @DisplayName("22. Проверка, что если лайков нет - возвращается пустой список популярных фильмов.")
+    @Test
+    void shouldReturnEmptyListWhenNoLikesExist() {
+        FilmRegisterDto film1 = FilmRegisterDto.builder()
+                .name("Фильм 1")
+                .description("Описание 1")
+                .releaseDate(LocalDate.of(2020, 1, 1))
+                .duration(100)
+                .mpaRatingId(1L)
+                .genresIds(List.of(1L))
+                .build();
+
+        FilmRegisterDto film2 = FilmRegisterDto.builder()
+                .name("Фильм 2")
+                .description("Описание 2")
+                .releaseDate(LocalDate.of(2021, 2, 2))
+                .duration(110)
+                .mpaRatingId(1L)
+                .genresIds(List.of(2L))
+                .build();
+
+        FilmRegisterDto film3 = FilmRegisterDto.builder()
+                .name("Фильм 3")
+                .description("Описание 3")
+                .releaseDate(LocalDate.of(2022, 3, 3))
+                .duration(120)
+                .mpaRatingId(1L)
+                .genresIds(List.of(3L))
+                .build();
+
+        restTemplate.postForEntity("/films", film1, Film.class);
+        restTemplate.postForEntity("/films", film2, Film.class);
+        restTemplate.postForEntity("/films", film3, Film.class);
+
+        ResponseEntity<FilmDto[]> response = restTemplate.getForEntity("/films/popular?count=3", FilmDto[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        FilmDto[] popularFilms = response.getBody();
+        assertThat(popularFilms).isNotNull();
+        assertThat(popularFilms.length).isEqualTo(0);
     }
 
 }

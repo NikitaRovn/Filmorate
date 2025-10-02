@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.integration.controller;
 
+import org.assertj.core.api.AssertionsForClassTypes;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.test.annotation.DirtiesContext;
@@ -16,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 import ru.yandex.practicum.filmorate.dto.UserDto;
 import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
 import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
+import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -38,6 +41,10 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 // 11. Проверка, что пользователь может удалить друга.
 // 12. Проверка, что возвращается список друзей.
 // 13. Проверка, что возвращается список общих друзей.
+// 14. Проверка, что возвращается пользователь по ID.
+// 15. Проверка, что возвращается ошибка 404 при запросе несуществующего пользователя.
+// 16. Проверка, что возвращается 404 при добавлении в друзья с несуществующим пользователем.
+// 17. Проверка, что нельзя удалить несуществующего пользователя.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestDatabase
@@ -59,7 +66,7 @@ class UserControllerTest {
 
         ResponseEntity<UserDto> response = restTemplate.postForEntity("/users", dto, UserDto.class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(200);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         UserDto savedUser = response.getBody();
         assertThat(savedUser).isNotNull();
@@ -82,7 +89,7 @@ class UserControllerTest {
 
         ResponseEntity<UserDto> response = restTemplate.postForEntity("/users", dto, UserDto.class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(200);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         UserDto savedUser = response.getBody();
         assertThat(savedUser).isNotNull();
@@ -110,7 +117,6 @@ class UserControllerTest {
         assertThat(response.getStatusCodeValue()).isEqualTo(400);
 
         assertThat(response.getBody()).contains("login");
-        System.out.println("Ответ при ошибке валидации (логин с пробелом): " + response.getBody());
     }
 
     @DisplayName("4. Проверка, что не регистрирует пользователя, если почта не содержит @")
@@ -128,7 +134,6 @@ class UserControllerTest {
         assertThat(response.getStatusCodeValue()).isEqualTo(400);
 
         assertThat(response.getBody()).contains("email");
-        System.out.println("Ответ при ошибке валидации (невалидный email): " + response.getBody());
     }
 
     @DisplayName("5. Проверка, что не регистрирует пользователя, если логин пустой")
@@ -146,7 +151,6 @@ class UserControllerTest {
         assertThat(response.getStatusCodeValue()).isEqualTo(400);
 
         assertThat(response.getBody()).contains("login");
-        System.out.println("Ответ при ошибке валидации (пустой логин): " + response.getBody());
     }
 
     @DisplayName("6. Проверка, что не регистрирует пользователя, если логин не передан")
@@ -164,7 +168,6 @@ class UserControllerTest {
         assertThat(response.getStatusCodeValue()).isEqualTo(400);
 
         assertThat(response.getBody()).contains("login");
-        System.out.println("Ответ при ошибке валидации (логин не передан): " + response.getBody());
     }
 
     @DisplayName("7. Проверка, что не регистрирует пользователя с будущей датой рождения")
@@ -182,7 +185,6 @@ class UserControllerTest {
         assertThat(response.getStatusCodeValue()).isEqualTo(400);
 
         assertThat(response.getBody()).contains("birthday");
-        System.out.println("Ответ при ошибке валидации (будущая дата рождения): " + response.getBody());
     }
 
     @DisplayName("8. Проверка, что сервер отдает список пользователей корректно")
@@ -191,21 +193,21 @@ class UserControllerTest {
         UserRegisterDto dto1 = UserRegisterDto.builder()
                 .login("user1")
                 .email("user1@example.com")
-                .name("User One")
+                .name("User Name 1")
                 .birthday(LocalDate.parse("1990-01-01"))
                 .build();
 
         UserRegisterDto dto2 = UserRegisterDto.builder()
                 .login("user2")
                 .email("user2@example.com")
-                .name("User Two")
+                .name("User Name 2")
                 .birthday(LocalDate.parse("1991-02-02"))
                 .build();
 
         UserRegisterDto dto3 = UserRegisterDto.builder()
                 .login("user3")
                 .email("user3@example.com")
-                .name("User Three")
+                .name("User Name 3")
                 .birthday(LocalDate.parse("1992-03-03"))
                 .build();
 
@@ -215,7 +217,7 @@ class UserControllerTest {
 
         ResponseEntity<UserDto[]> response = restTemplate.getForEntity("/users", UserDto[].class);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(200);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         UserDto[] users = response.getBody();
         assertThat(users).isNotNull()
@@ -239,7 +241,7 @@ class UserControllerTest {
                 .build();
 
         ResponseEntity<UserDto> createResponse = restTemplate.postForEntity("/users", registerDto, UserDto.class);
-        assertThat(createResponse.getStatusCodeValue()).isEqualTo(200);
+        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         UserDto createdUser = createResponse.getBody();
         assertThat(createdUser).isNotNull();
@@ -255,7 +257,7 @@ class UserControllerTest {
         restTemplate.put("/users/{id}", updateDto, userId);
 
         ResponseEntity<UserDto> getResponse = restTemplate.getForEntity("/users/{id}", UserDto.class, userId);
-        assertThat(getResponse.getStatusCodeValue()).isEqualTo(200);
+        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         UserDto updatedUser = getResponse.getBody();
         assertThat(updatedUser).isNotNull()
@@ -273,15 +275,15 @@ class UserControllerTest {
         String baseUrl = "http://localhost:" + port;
 
         UserRegisterDto user1Dto = UserRegisterDto.builder()
-                .login("alice")
-                .email("alice@example.com")
-                .name("Alice")
+                .login("Тестюзер")
+                .email("Тестюзер@example.com")
+                .name("Тестюзер")
                 .birthday(LocalDate.of(1990, 1, 1))
                 .build();
         UserRegisterDto user2Dto = UserRegisterDto.builder()
-                .login("bob")
-                .email("bob@example.com")
-                .name("Bob")
+                .login("Тестюзер2")
+                .email("Тестюзер2@example.com")
+                .name("Тестюзер2")
                 .birthday(LocalDate.of(1991, 2, 2))
                 .build();
 
@@ -312,15 +314,15 @@ class UserControllerTest {
         String baseUrl = "http://localhost:" + port;
 
         UserRegisterDto user1Dto = UserRegisterDto.builder()
-                .login("alice")
-                .email("alice@example.com")
-                .name("Alice")
+                .login("Тестюзер")
+                .email("Тестюзер@example.com")
+                .name("Тестюзер")
                 .birthday(LocalDate.of(1990, 1, 1))
                 .build();
         UserRegisterDto user2Dto = UserRegisterDto.builder()
-                .login("bob")
-                .email("bob@example.com")
-                .name("Bob")
+                .login("Тестюзер2")
+                .email("Тестюзер2@example.com")
+                .name("Тестюзер2")
                 .birthday(LocalDate.of(1991, 2, 2))
                 .build();
 
@@ -353,21 +355,21 @@ class UserControllerTest {
         String baseUrl = "http://localhost:" + port;
 
         UserRegisterDto user1Dto = UserRegisterDto.builder()
-                .login("alice")
-                .email("alice@example.com")
-                .name("Alice")
+                .login("Тестюзер")
+                .email("Тестюзер@example.com")
+                .name("Тестюзер")
                 .birthday(LocalDate.of(1990, 1, 1))
                 .build();
         UserRegisterDto user2Dto = UserRegisterDto.builder()
-                .login("bob")
-                .email("bob@example.com")
-                .name("Bob")
+                .login("Тестюзер2")
+                .email("Тестюзер2@example.com")
+                .name("Тестюзер2")
                 .birthday(LocalDate.of(1991, 2, 2))
                 .build();
         UserRegisterDto user3Dto = UserRegisterDto.builder()
-                .login("charlie")
-                .email("charlie@example.com")
-                .name("Charlie")
+                .login("Тестюзер3")
+                .email("Тестюзер3@example.com")
+                .name("Тестюзер3")
                 .birthday(LocalDate.of(1992, 3, 3))
                 .build();
 
@@ -400,27 +402,27 @@ class UserControllerTest {
         String baseUrl = "http://localhost:" + port;
 
         UserRegisterDto user1Dto = UserRegisterDto.builder()
-                .login("alice")
-                .email("alice@example.com")
-                .name("Alice")
+                .login("Тестюзер")
+                .email("Тестюзер@example.com")
+                .name("Тестюзер")
                 .birthday(LocalDate.of(1990, 1, 1))
                 .build();
         UserRegisterDto user2Dto = UserRegisterDto.builder()
-                .login("bob")
-                .email("bob@example.com")
-                .name("Bob")
+                .login("Тестюзер2")
+                .email("Тестюзер2@example.com")
+                .name("Тестюзер2")
                 .birthday(LocalDate.of(1991, 2, 2))
                 .build();
         UserRegisterDto user3Dto = UserRegisterDto.builder()
-                .login("charlie")
-                .email("charlie@example.com")
-                .name("Charlie")
+                .login("Тестюзер3")
+                .email("Тестюзер3@example.com")
+                .name("Тестюзер3")
                 .birthday(LocalDate.of(1992, 3, 3))
                 .build();
         UserRegisterDto user4Dto = UserRegisterDto.builder()
-                .login("david")
-                .email("david@example.com")
-                .name("David")
+                .login("Тестюзер4")
+                .email("Тестюзер4@example.com")
+                .name("Тестюзер4")
                 .birthday(LocalDate.of(1993, 4, 4))
                 .build();
 
@@ -447,5 +449,99 @@ class UserControllerTest {
                 .containsExactly(
                         tuple(user3.getId(), "charlie")
                 );
+    }
+
+    @DisplayName("14. Проверка, что возвращается пользователь по ID.")
+    @Test
+    void shouldReturnUserById() {
+        UserRegisterDto registerDto = UserRegisterDto.builder()
+                .email("Тестюзер@example.com")
+                .login("Тестюзер")
+                .name("Тест юзер")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .build();
+
+        ResponseEntity<User> createResponse = restTemplate.postForEntity("/users", registerDto, User.class);
+        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        User createdUser = createResponse.getBody();
+        AssertionsForClassTypes.assertThat(createdUser).isNotNull();
+        AssertionsForClassTypes.assertThat(createdUser.getId()).isNotNull();
+
+        Long userId = createdUser.getId();
+
+        ResponseEntity<User> getResponse = restTemplate.getForEntity("/users/{id}", User.class, userId);
+
+        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        User returnedUser = getResponse.getBody();
+        AssertionsForClassTypes.assertThat(returnedUser).isNotNull();
+        AssertionsForClassTypes.assertThat(returnedUser.getId()).isEqualTo(userId);
+        AssertionsForClassTypes.assertThat(returnedUser.getEmail()).isEqualTo(registerDto.getEmail());
+        AssertionsForClassTypes.assertThat(returnedUser.getLogin()).isEqualTo(registerDto.getLogin());
+        AssertionsForClassTypes.assertThat(returnedUser.getName()).isEqualTo(registerDto.getName());
+        AssertionsForClassTypes.assertThat(returnedUser.getBirthday()).isEqualTo(registerDto.getBirthday());
+    }
+
+    @DisplayName("15. Проверка, что возвращается ошибка 404 при запросе несуществующего пользователя.")
+    @Test
+    void shouldReturnNotFoundForInvalidUserId() {
+        Long invalidId = 999L;
+
+        ResponseEntity<String> response = restTemplate.getForEntity("/users/{id}", String.class, invalidId);
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(404);
+
+        String body = response.getBody();
+
+        assertThat(body)
+                .isNotNull()
+                .contains("user")
+                .contains("Пользователь не найден.");
+    }
+
+    @DisplayName("16. Проверка, что возвращается 404 при добавлении в друзья с несуществующим пользователем.")
+    @Test
+    void shouldReturnNotFoundWhenAddingFriendWithInvalidIds() {
+        UserRegisterDto userDto = UserRegisterDto.builder()
+                .email("friendcheck@example.com")
+                .login("friendcheck")
+                .name("Friend Checker")
+                .birthday(LocalDate.of(1995, 5, 5))
+                .build();
+
+        ResponseEntity<UserDto> createResponse = restTemplate.postForEntity("/users", userDto, UserDto.class);
+        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Long existingUserId = createResponse.getBody().getId();
+
+        Long invalidUserId = 999L;
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/users/{id}/friends/{friendId}",
+                HttpMethod.PUT,
+                null,
+                String.class,
+                existingUserId,
+                invalidUserId
+        );
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(404);
+    }
+
+    @DisplayName("17. Проверка, что нельзя удалить несуществующего пользователя.")
+    @Test
+    void shouldReturn404WhenDeletingNonExistingUser() {
+        Long nonExistingId = 999L;
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/users/{id}",
+                HttpMethod.DELETE,
+                null,
+                String.class,
+                nonExistingId
+        );
+
+        assertThat(response.getStatusCodeValue()).isEqualTo(404);
+        assertThat(response.getBody()).isNotNull().contains("Not Found");
+        assertThat(response.getBody()).isNotNull().contains("Пользователь не найден.");
     }
 }

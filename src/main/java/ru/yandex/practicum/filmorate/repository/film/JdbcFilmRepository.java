@@ -46,6 +46,11 @@ public class JdbcFilmRepository extends JdbcBaseRepository<Film> implements Film
             INSERT INTO FILMS(name, description, release_date, duration, mpa_rating_id)
             VALUES (?, ?, ?, ?, ?)
             """;
+    public static final String UPDATE_QUERY = """
+            UPDATE FILMS
+            SET name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ?
+            WHERE id = ?
+            """;
 
     public JdbcFilmRepository(JdbcTemplate jdbc, RowMapper<Film> mapper, FilmExtractor filmExtractor) {
         super(jdbc, mapper);
@@ -85,11 +90,32 @@ public class JdbcFilmRepository extends JdbcBaseRepository<Film> implements Film
 
     @Override
     public int update(Film film) {
-        return 0;
+        int updatedRows = update(UPDATE_QUERY,
+                film.getName(),
+                film.getDescription(),
+                film.getReleaseDate(),
+                film.getDuration(),
+                film.getMpaRating().getId(),
+                film.getId());
+
+        String deleteGenresQuery = "DELETE FROM film_genres WHERE film_id = ?";
+        jdbc.update(deleteGenresQuery, film.getId());
+
+        String insertGenreQuery = "INSERT INTO film_genres(film_id, genre_id, sort_order) VALUES (?, ?, ?)";
+        List<Object[]> batch = new ArrayList<>();
+        int sortOrder = 1;
+        for (Genre genre : film.getGenres()) {
+            batch.add(new Object[]{film.getId(), genre.getId(), sortOrder++});
+        }
+        jdbc.batchUpdate(insertGenreQuery, batch);
+
+        return updatedRows;
     }
 
     @Override
-    public void deleteOneById(Long id) {
+    public int deleteOneById(Long id) {
+        jdbc.update("DELETE FROM film_genres WHERE film_id = ?", id);
+        return jdbc.update("DELETE FROM films WHERE id = ?", id);
     }
 
     @Override

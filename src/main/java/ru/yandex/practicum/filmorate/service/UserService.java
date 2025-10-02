@@ -110,6 +110,14 @@ public class UserService {
     }
 
     public void sendUserFriendRequest(Long userId, Long friendId) {
+        User user = userRepository.findOneById(userId);
+        if (user == null) {
+            throw new UserNotFoundException(userId);
+        }
+        User friend = userRepository.findOneById(friendId);
+        if (friend == null) {
+            throw new UserNotFoundException(friendId);
+        }
         friendsRepository.sendFriendship(userId, friendId);
     }
 

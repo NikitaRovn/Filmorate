@@ -7,13 +7,16 @@ import ru.yandex.practicum.filmorate.dto.FilmDto;
 import ru.yandex.practicum.filmorate.dto.FilmRegisterDto;
 import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
+import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.logging.LogMessages;
 import ru.yandex.practicum.filmorate.mapper.FilmMapper;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
+import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.repository.film.FilmRepository;
 import ru.yandex.practicum.filmorate.repository.likes.LikesRepository;
+import ru.yandex.practicum.filmorate.repository.user.UserRepository;
 
 import java.util.List;
 import java.util.Set;
@@ -23,10 +26,14 @@ import java.util.Set;
 public class FilmService {
     private final FilmRepository filmRepository;
     private final LikesRepository likesRepository;
+    private final UserRepository userRepository;
 
-    public FilmService(@Qualifier("jdbcFilmRepository") FilmRepository filmRepository, @Qualifier("jdbcMemoryLikesRepository") LikesRepository likesRepository) {
+    public FilmService(@Qualifier("jdbcFilmRepository") FilmRepository filmRepository,
+                       @Qualifier("jdbcMemoryLikesRepository") LikesRepository likesRepository,
+                       @Qualifier("jdbcUserRepository") UserRepository userRepository) {
         this.filmRepository = filmRepository;
         this.likesRepository = likesRepository;
+        this.userRepository = userRepository;
     }
 
     public FilmDto addFilm(FilmRegisterDto filmRegisterDto) {
@@ -79,6 +86,10 @@ public class FilmService {
         film.setDescription(filmUpdateDto.getDescription());
         film.setReleaseDate(filmUpdateDto.getReleaseDate());
         film.setDuration(filmUpdateDto.getDuration());
+        film.setMpaRating(MpaRating.builder().id(filmUpdateDto.getMpaRatingId()).build());
+        film.setGenres(filmUpdateDto.getGenresIds().stream()
+                .map(id1 -> Genre.builder().id(id1).build())
+                .toList());
 
         filmRepository.update(film);
         log.info(LogMessages.FILM_UPDATE_SUCCESS, id);
@@ -107,6 +118,14 @@ public class FilmService {
     }
 
     public void addLike(Long id, Long userId) {
+        Film film = filmRepository.findOneById(id);
+        if (film == null) {
+            throw new FilmNotFoundException(id);
+        }
+        User user = userRepository.findOneById(userId);
+        if (user == null) {
+            throw new UserNotFoundException(userId);
+        }
         likesRepository.addLike(id, userId);
     }
 
