@@ -7,7 +7,6 @@ import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.UserFilmLike;
 import ru.yandex.practicum.filmorate.repository.base.JdbcBaseRepository;
 
-import javax.print.DocFlavor;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;

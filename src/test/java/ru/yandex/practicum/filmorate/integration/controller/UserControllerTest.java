@@ -300,11 +300,11 @@ class UserControllerTest {
 
         assertThat(user1Friends)
                 .extracting(UserDto::getId, UserDto::getLogin)
-                .containsExactly(tuple(user2.getId(), "bob"));
+                .containsExactly(tuple(user2.getId(), "Тестюзер2"));
 
         assertThat(user2Friends)
                 .extracting(UserDto::getId, UserDto::getLogin)
-                .containsExactly(tuple(user1.getId(), "alice"));
+                .containsExactly(tuple(user1.getId(), "Тестюзер"));
     }
 
     @DisplayName("11. Проверка, что пользователь может удалить друга.")
@@ -390,8 +390,8 @@ class UserControllerTest {
         assertThat(friendsOfUser1)
                 .extracting(UserDto::getId, UserDto::getLogin)
                 .containsExactlyInAnyOrder(
-                        tuple(user2.getId(), "bob"),
-                        tuple(user3.getId(), "charlie")
+                        tuple(user2.getId(), "Тестюзер2"),
+                        tuple(user3.getId(), "Тестюзер3")
                 );
     }
 
@@ -447,7 +447,7 @@ class UserControllerTest {
         assertThat(mutualFriends)
                 .extracting(UserDto::getId, UserDto::getLogin)
                 .containsExactly(
-                        tuple(user3.getId(), "charlie")
+                        tuple(user3.getId(), "Тестюзер3")
                 );
     }
 
