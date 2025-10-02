@@ -18,6 +18,7 @@ import ru.yandex.practicum.filmorate.repository.genre.GenreRepository;
 import ru.yandex.practicum.filmorate.repository.mpa_rating.MpaRatingRepository;
 import ru.yandex.practicum.filmorate.repository.user.UserRepository;
 
+import java.util.Collection;
 import java.util.List;
 
 @Component
@@ -45,7 +46,7 @@ public class EntityValidator {
         return user;
     }
 
-    public void validateFriendExists(List<Long> friendsIds, Long friendId) {
+    public void validateFriendExists(Collection<Long> friendsIds, Long friendId) {
         if (!friendsIds.contains(friendId)) {
             throw new FriendNotFoundException(friendId);
         }

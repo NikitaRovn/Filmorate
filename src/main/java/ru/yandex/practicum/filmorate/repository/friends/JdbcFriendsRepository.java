@@ -60,8 +60,13 @@ public class JdbcFriendsRepository extends JdbcBaseRepository<Friendship> implem
     }
 
     @Override
-    public List<Long> findFriendsById(Long id) {
-        return jdbc.queryForList(FIND_FRIENDS_BY_ID_QUERY, Long.class, id);
+    public List<Friendship> findFriendshipsByUserId(Long userId) {
+        String query = """
+                SELECT user_id, friend_id, friendship_status
+                FROM friendships
+                WHERE user_id = ?
+                """;
+        return jdbc.query(query, mapper, userId);
     }
 
     @Override

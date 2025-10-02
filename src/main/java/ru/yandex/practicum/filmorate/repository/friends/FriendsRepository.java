@@ -1,5 +1,7 @@
 package ru.yandex.practicum.filmorate.repository.friends;
 
+import ru.yandex.practicum.filmorate.model.Friendship;
+
 import java.util.List;
 
 public interface FriendsRepository {
@@ -9,7 +11,7 @@ public interface FriendsRepository {
 
     void deleteFriendship(Long userId, Long friendId);
 
-    List<Long> findFriendsById(Long id);
+    List<Friendship> findFriendshipsByUserId(Long userId);
 
     void cleanup();
 }

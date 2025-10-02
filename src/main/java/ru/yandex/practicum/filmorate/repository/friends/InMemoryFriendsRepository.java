@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.repository.friends;
 
 import org.springframework.stereotype.Repository;
+import ru.yandex.practicum.filmorate.model.Friendship;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,13 +30,8 @@ public class InMemoryFriendsRepository implements FriendsRepository {
     }
 
     @Override
-    public List<Long> findFriendsById(Long id) {
-        return friendships.getOrDefault(id, Map.of())
-                .entrySet()
-                .stream()
-                .filter(Map.Entry::getValue)
-                .map(Map.Entry::getKey)
-                .toList();
+    public List<Friendship> findFriendshipsByUserId(Long userId) {
+        return List.of();
     }
 
     @Override

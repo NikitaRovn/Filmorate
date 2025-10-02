@@ -8,11 +8,12 @@ import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
 import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
 import ru.yandex.practicum.filmorate.logging.LogMessages;
 import ru.yandex.practicum.filmorate.mapper.UserMapper;
+import ru.yandex.practicum.filmorate.model.Friendship;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.repository.friends.FriendsRepository;
 import ru.yandex.practicum.filmorate.repository.user.UserRepository;
 
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -69,7 +70,7 @@ public class UserService {
         user.setBirthday(userUpdateDto.getBirthday());
         user.setEmail(userUpdateDto.getEmail());
 
-        int updatedRows = userRepository.update(user);
+        userRepository.update(user);
         log.info(LogMessages.USER_UPDATE_SUCCESS, user.getId());
         return UserMapper.mapToUserDto(user);
     }
@@ -83,20 +84,35 @@ public class UserService {
         log.info(LogMessages.USER_DELETE_SUCCESS, id);
     }
 
-    public List<UserDto> getUserFriends(Long id) {
-        List<Long> friendIds = friendsRepository.findFriendsById(id);
+    public List<UserDto> getUserFriends(Long userId) {
+        entityValidator.validateUserExists(userId);
+
+        List<Friendship> friendships = friendsRepository.findFriendshipsByUserId(userId);
+
+        List<Long> friendIds = friendships.stream()
+                .map(friend -> friend.getId().getFriendId())
+                .toList();
+
         List<User> friends = userRepository.findManyByIds(friendIds);
+
         return friends.stream().map(UserMapper::mapToUserDto).toList();
     }
 
-    public List<UserDto> getMutualFriends(Long id, Long otherId) {
-        Set<Long> friendIdsUser = new HashSet<>(friendsRepository.findFriendsById(id));
-        Set<Long> friendIdsOtherUser = new HashSet<>(friendsRepository.findFriendsById(otherId));
+    public List<UserDto> getMutualFriends(Long userId, Long otherId) {
+        List<Friendship> friendshipsUser = friendsRepository.findFriendshipsByUserId(userId);
+        List<Friendship> friendshipsOther = friendsRepository.findFriendshipsByUserId(otherId);
 
-        Set<Long> mutualFriendIds = friendIdsUser.stream()
-                .filter(friendIdsOtherUser::contains)
+        Set<Long> friendIdsUser = friendshipsUser.stream()
+                .map(f -> f.getId().getFriendId())
                 .collect(Collectors.toSet());
-        return userRepository.findManyByIds(mutualFriendIds.stream().toList())
+        Set<Long> friendIdsOther = friendshipsOther.stream()
+                .map(f -> f.getId().getFriendId())
+                .collect(Collectors.toSet());
+
+
+        friendIdsUser.retainAll(friendIdsOther);
+
+        return userRepository.findManyByIds(new ArrayList<>(friendIdsUser))
                 .stream()
                 .map(UserMapper::mapToUserDto)
                 .toList();
@@ -120,8 +136,13 @@ public class UserService {
         entityValidator.validateUserExists(userId);
         entityValidator.validateUserExists(friendId);
 
-        List<Long> friendsIds = friendsRepository.findFriendsById(userId);
-        entityValidator.validateFriendExists(friendsIds, friendId);
+        List<Friendship> friendships = friendsRepository.findFriendshipsByUserId(userId);
+
+        Set<Long> friendIds = friendships.stream()
+                .map(f -> f.getId().getFriendId())
+                .collect(Collectors.toSet());
+
+        entityValidator.validateFriendExists(friendIds, friendId);
 
         friendsRepository.deleteFriendship(userId, friendId);
     }
