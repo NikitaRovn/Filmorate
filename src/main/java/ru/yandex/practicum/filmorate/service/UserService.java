@@ -6,8 +6,6 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.UserDto;
 import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
 import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
-import ru.yandex.practicum.filmorate.exception.friend.FriendNotFoundException;
-import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.logging.LogMessages;
 import ru.yandex.practicum.filmorate.mapper.UserMapper;
 import ru.yandex.practicum.filmorate.model.User;
@@ -17,16 +15,21 @@ import ru.yandex.practicum.filmorate.repository.user.UserRepository;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class UserService {
     private final UserRepository userRepository;
     private final FriendsRepository friendsRepository;
+    private final EntityValidator entityValidator;
 
-    public UserService(@Qualifier("jdbcUserRepository") UserRepository userRepository, @Qualifier("jdbcFriendsRepository") FriendsRepository friendsRepository) {
+    public UserService(@Qualifier("jdbcUserRepository") UserRepository userRepository,
+                       @Qualifier("jdbcFriendsRepository") FriendsRepository friendsRepository,
+                       EntityValidator entityValidator) {
         this.userRepository = userRepository;
         this.friendsRepository = friendsRepository;
+        this.entityValidator = entityValidator;
     }
 
     public UserDto registerUser(UserRegisterDto userRegisterDto) {
@@ -46,10 +49,7 @@ public class UserService {
     }
 
     public UserDto getUser(Long id) {
-        User user = userRepository.findOneById(id);
-        if (user == null) {
-            throw new UserNotFoundException(id);
-        }
+        User user = entityValidator.validateUserExists(id);
         return UserMapper.mapToUserDto(user);
     }
 
@@ -61,11 +61,8 @@ public class UserService {
 
     public UserDto updateUser(UserUpdateDto userUpdateDto, Long id) {
         log.trace(LogMessages.USER_UPDATE, userUpdateDto);
-        User user = userRepository.findOneById(id);
-        if (user == null) {
-            log.warn(LogMessages.USER_UPDATE_NOT_FOUND, id);
-            throw new UserNotFoundException(id);
-        }
+        User user = entityValidator.validateUserExists(id);
+
         log.debug(LogMessages.USER_UPDATE_STARTED, id);
         user.setName(userUpdateDto.getName());
         user.setLogin(userUpdateDto.getLogin());
@@ -79,11 +76,8 @@ public class UserService {
 
     public void deleteUser(Long id) {
         log.trace(LogMessages.USER_DELETE, id);
-        User user = userRepository.findOneById(id);
-        if (user == null) {
-            log.warn(LogMessages.USER_DELETE_NOT_FOUND, id);
-            throw new UserNotFoundException(id);
-        }
+        entityValidator.validateUserExists(id);
+
         log.debug(LogMessages.USER_DELETE_STARTED, id);
         userRepository.deleteOneById(id);
         log.info(LogMessages.USER_DELETE_SUCCESS, id);
@@ -96,44 +90,39 @@ public class UserService {
     }
 
     public List<UserDto> getMutualFriends(Long id, Long otherId) {
-        List<Long> friendIdsUser = friendsRepository.findFriendsById(id);
-        List<User> friendsUser = userRepository.findManyByIds(friendIdsUser);
-        List<Long> friendIdsOtherUser = friendsRepository.findFriendsById(otherId);
+        Set<Long> friendIdsUser = new HashSet<>(friendsRepository.findFriendsById(id));
+        Set<Long> friendIdsOtherUser = new HashSet<>(friendsRepository.findFriendsById(otherId));
 
-        Set<Long> otherIds = new HashSet<>(friendIdsOtherUser);
-
-        List<User> listMutualFriends = friendsUser.stream()
-                .filter(user -> otherIds.contains(user.getId()))
+        Set<Long> mutualFriendIds = friendIdsUser.stream()
+                .filter(friendIdsOtherUser::contains)
+                .collect(Collectors.toSet());
+        return userRepository.findManyByIds(mutualFriendIds.stream().toList())
+                .stream()
+                .map(UserMapper::mapToUserDto)
                 .toList();
-
-        return listMutualFriends.stream().map(UserMapper::mapToUserDto).toList();
     }
 
     public void sendUserFriendRequest(Long userId, Long friendId) {
-        User user = userRepository.findOneById(userId);
-        if (user == null) {
-            throw new UserNotFoundException(userId);
-        }
-        User friend = userRepository.findOneById(friendId);
-        if (friend == null) {
-            throw new UserNotFoundException(friendId);
-        }
+        entityValidator.validateUserExists(userId);
+        entityValidator.validateUserExists(friendId);
+
         friendsRepository.sendFriendship(userId, friendId);
     }
 
-    public void acceptUserFriendRequest(Long id, Long friendId) {
-        friendsRepository.acceptFriendship(id, friendId);
+    public void acceptUserFriendRequest(Long userId, Long friendId) {
+        entityValidator.validateUserExists(userId);
+        entityValidator.validateUserExists(friendId);
+
+        friendsRepository.acceptFriendship(userId, friendId);
     }
 
-    public void deleteUserFriend(Long id, Long friendId) {
-        List<Long> friends = friendsRepository.findFriendsById(id);
+    public void deleteUserFriend(Long userId, Long friendId) {
+        entityValidator.validateUserExists(userId);
+        entityValidator.validateUserExists(friendId);
 
-        if (friends == null) {
-            throw new UserNotFoundException(id);
-        } else if (!friends.contains(friendId)) {
-            throw new FriendNotFoundException(friendId);
-        }
+        List<Long> friendsIds = friendsRepository.findFriendsById(userId);
+        entityValidator.validateFriendExists(friendsIds, friendId);
 
-        friendsRepository.deleteFriendship(id, friendId);
+        friendsRepository.deleteFriendship(userId, friendId);
     }
 }
