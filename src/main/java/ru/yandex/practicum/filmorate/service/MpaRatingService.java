@@ -15,9 +15,12 @@ import java.util.List;
 @Slf4j
 public class MpaRatingService {
     private final MpaRatingRepository mpaRatingRepository;
+    private final EntityValidator entityValidator;
 
-    public MpaRatingService(@Qualifier("jdbcMpaRatingRepository") MpaRatingRepository mpaRatingRepository) {
+    public MpaRatingService(@Qualifier("jdbcMpaRatingRepository") MpaRatingRepository mpaRatingRepository,
+                            EntityValidator entityValidator) {
         this.mpaRatingRepository = mpaRatingRepository;
+        this.entityValidator = entityValidator;
     }
 
     public List<MpaRatingDto> getAllMpaRatings() {
@@ -27,10 +30,7 @@ public class MpaRatingService {
     }
 
     public MpaRatingDto getRating(Long id) {
-        MpaRating mpaRating = mpaRatingRepository.findOneById(id);
-        if (mpaRating == null) {
-            throw new MpaRatingNotFoundException(id);
-        }
+        MpaRating mpaRating = entityValidator.validateMpaRatingExists(id);
         return MpaRatingMapper.mapToMpaRatingDto(mpaRating);
     }
 }

@@ -16,9 +16,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GenreService {
     private final GenreRepository genreRepository;
+    private final EntityValidator entityValidator;
 
-    public GenreService(@Qualifier("jdbcGenreRepository") GenreRepository genreRepository) {
+    public GenreService(@Qualifier("jdbcGenreRepository") GenreRepository genreRepository,
+                        EntityValidator entityValidator) {
         this.genreRepository = genreRepository;
+        this.entityValidator = entityValidator;
     }
 
     public List<GenreDto> getAllGenres() {
@@ -29,10 +32,7 @@ public class GenreService {
     }
 
     public GenreDto getGenre(Long id) {
-        Genre genre = genreRepository.findOneById(id);
-        if (genre == null) {
-            throw new GenreNotFoundException(id);
-        }
+        Genre genre = entityValidator.validateGenreExists(id);
         return GenreMapper.mapToGenreDto(genre);
     }
 }
