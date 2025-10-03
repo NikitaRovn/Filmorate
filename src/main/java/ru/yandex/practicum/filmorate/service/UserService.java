@@ -86,64 +86,43 @@ public class UserService {
 
     public List<UserDto> getUserFriends(Long userId) {
         entityValidator.validateUserExists(userId);
-
         List<Friendship> friendships = friendsRepository.findFriendshipsByUserId(userId);
-
         List<Long> friendIds = friendships.stream()
-                .map(friend -> friend.getId().getFriendId())
+                .map(f -> f.getId().getFriendId())
                 .toList();
-
-        List<User> friends = userRepository.findManyByIds(friendIds);
-
-        return friends.stream().map(UserMapper::mapToUserDto).toList();
-    }
-
-    public List<UserDto> getMutualFriends(Long userId, Long otherId) {
-        List<Friendship> friendshipsUser = friendsRepository.findFriendshipsByUserId(userId);
-        List<Friendship> friendshipsOther = friendsRepository.findFriendshipsByUserId(otherId);
-
-        Set<Long> friendIdsUser = friendshipsUser.stream()
-                .map(f -> f.getId().getFriendId())
-                .collect(Collectors.toSet());
-        Set<Long> friendIdsOther = friendshipsOther.stream()
-                .map(f -> f.getId().getFriendId())
-                .collect(Collectors.toSet());
-
-
-        friendIdsUser.retainAll(friendIdsOther);
-
-        return userRepository.findManyByIds(new ArrayList<>(friendIdsUser))
-                .stream()
+        return userRepository.findManyByIds(friendIds).stream()
                 .map(UserMapper::mapToUserDto)
                 .toList();
     }
 
-    public void sendUserFriendRequest(Long userId, Long friendId) {
-        entityValidator.validateUserExists(userId);
-        entityValidator.validateUserExists(friendId);
-        friendsRepository.sendFriendship(userId, friendId);
+    public List<UserDto> getMutualFriends(Long userId, Long otherId) {
+        List<Long> userFriends = new ArrayList<>(getFriendIds(userId));
+        List<Long> otherFriends = new ArrayList<>(getFriendIds(otherId));
+
+        userFriends.retainAll(otherFriends);
+
+        return userRepository.findManyByIds(userFriends).stream()
+                .map(UserMapper::mapToUserDto)
+                .toList();
     }
 
-    public void acceptUserFriendRequest(Long userId, Long friendId) {
+    public void addFriend(Long userId, Long friendId) {
         entityValidator.validateUserExists(userId);
         entityValidator.validateUserExists(friendId);
-        entityValidator.validateFriendshipPendingExists(userId, friendId);
-        friendsRepository.acceptFriendship(userId, friendId);
+        entityValidator.validateFriendshipNotExists(userId, friendId);
+        friendsRepository.addFriendship(userId, friendId);
     }
 
-    public void deleteUserFriend(Long userId, Long friendId) {
+    public void removeFriend(Long userId, Long friendId) {
         entityValidator.validateUserExists(userId);
         entityValidator.validateUserExists(friendId);
         entityValidator.validateFriendshipExists(userId, friendId);
+        friendsRepository.removeFriendship(userId, friendId);
+    }
 
-//        List<Friendship> friendships = friendsRepository.findFriendshipsByUserId(userId);
-//
-//        Set<Long> friendIds = friendships.stream()
-//                .map(f -> f.getId().getFriendId())
-//                .collect(Collectors.toSet());
-//
-//        entityValidator.validateFriendExists(friendIds, friendId);
-
-        friendsRepository.deleteFriendship(userId, friendId);
+    private List<Long> getFriendIds(Long userId) {
+        return friendsRepository.findFriendshipsByUserId(userId).stream()
+                .map(f -> f.getId().getFriendId())
+                .toList();
     }
 }

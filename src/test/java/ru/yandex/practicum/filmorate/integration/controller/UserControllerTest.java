@@ -37,7 +37,7 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 // 7. Проверка, что пользователя не регистрирует, если дата рождения позже текущей.
 // 8. Проверка, что сервер отдает список пользователей корректно.
 // 9. Проверка, что сервер обновляет пользователя корректно.
-// 10. Проверка, что пользователи могут стать друзьями.
+// 10. Проверка, что пользователи могут стать друзьями (односторонняя дружба)
 // 11. Проверка, что пользователь может удалить друга.
 // 12. Проверка, что возвращается список друзей.
 // 13. Проверка, что возвращается список общих друзей.
@@ -268,7 +268,7 @@ class UserControllerTest {
     @LocalServerPort
     private int port;
 
-    @DisplayName("10. Проверка, что пользователи могут стать друзьями.")
+    @DisplayName("10. Проверка, что пользователи могут стать друзьями (односторонняя дружба)")
     @Test
     void shouldAddFriends() {
         RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
@@ -292,19 +292,11 @@ class UserControllerTest {
 
         restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user2.getId());
 
-        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}",
-                HttpMethod.PATCH, null, Void.class, user2.getId(), user1.getId());
-
         List<UserDto> user1Friends = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user1.getId()));
-        List<UserDto> user2Friends = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user2.getId()));
 
         assertThat(user1Friends)
                 .extracting(UserDto::getId, UserDto::getLogin)
                 .containsExactly(tuple(user2.getId(), "Тестюзер2"));
-
-        assertThat(user2Friends)
-                .extracting(UserDto::getId, UserDto::getLogin)
-                .containsExactly(tuple(user1.getId(), "Тестюзер"));
     }
 
     @DisplayName("11. Проверка, что пользователь может удалить друга.")
@@ -331,9 +323,6 @@ class UserControllerTest {
 
         restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user2.getId());
 
-        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}",
-                HttpMethod.PATCH, null, Void.class, user2.getId(), user1.getId());
-
         List<UserDto> user1FriendsBefore = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user1.getId()));
         assertThat(user1FriendsBefore)
                 .extracting(UserDto::getId)
@@ -342,10 +331,7 @@ class UserControllerTest {
         restTemplate.delete(baseUrl + "/users/{id}/friends/{friendId}", user1.getId(), user2.getId());
 
         List<UserDto> user1FriendsAfter = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user1.getId()));
-        List<UserDto> user2FriendsAfter = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user2.getId()));
-
         assertThat(user1FriendsAfter).extracting(UserDto::getId).doesNotContain(user2.getId());
-        assertThat(user2FriendsAfter).extracting(UserDto::getId).doesNotContain(user1.getId());
     }
 
     @DisplayName("12. Проверка, что возвращается список друзей.")
@@ -378,12 +364,7 @@ class UserControllerTest {
         UserDto user3 = restTemplate.postForEntity(baseUrl + "/users", user3Dto, UserDto.class).getBody();
 
         restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user2.getId());
-        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}",
-                HttpMethod.PATCH, null, Void.class, user2.getId(), user1.getId());
-
         restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user3.getId());
-        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}",
-                HttpMethod.PATCH, null, Void.class, user3.getId(), user1.getId());
 
         List<UserDto> friendsOfUser1 = List.of(restTemplate.getForObject(baseUrl + "/users/{id}/friends", UserDto[].class, user1.getId()));
 
@@ -419,26 +400,13 @@ class UserControllerTest {
                 .name("Тестюзер3")
                 .birthday(LocalDate.of(1992, 3, 3))
                 .build();
-        UserRegisterDto user4Dto = UserRegisterDto.builder()
-                .login("Тестюзер4")
-                .email("Тестюзер4@example.com")
-                .name("Тестюзер4")
-                .birthday(LocalDate.of(1993, 4, 4))
-                .build();
 
         UserDto user1 = restTemplate.postForEntity(baseUrl + "/users", user1Dto, UserDto.class).getBody();
         UserDto user2 = restTemplate.postForEntity(baseUrl + "/users", user2Dto, UserDto.class).getBody();
         UserDto user3 = restTemplate.postForEntity(baseUrl + "/users", user3Dto, UserDto.class).getBody();
-        UserDto user4 = restTemplate.postForEntity(baseUrl + "/users", user4Dto, UserDto.class).getBody();
 
         restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user3.getId());
-        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}", HttpMethod.PATCH, null, Void.class, user3.getId(), user1.getId());
-
         restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user2.getId(), user3.getId());
-        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}", HttpMethod.PATCH, null, Void.class, user3.getId(), user2.getId());
-
-        restTemplate.put(baseUrl + "/users/{id}/friends/{friendId}", null, user1.getId(), user4.getId());
-        restTemplate.exchange(baseUrl + "/users/{id}/friends/{friendId}", HttpMethod.PATCH, null, Void.class, user4.getId(), user1.getId());
 
         List<UserDto> mutualFriends = List.of(
                 restTemplate.getForObject(baseUrl + "/users/{id}/friends/common/{otherId}", UserDto[].class, user1.getId(), user2.getId())
@@ -446,9 +414,7 @@ class UserControllerTest {
 
         assertThat(mutualFriends)
                 .extracting(UserDto::getId, UserDto::getLogin)
-                .containsExactly(
-                        tuple(user3.getId(), "Тестюзер3")
-                );
+                .containsExactly(tuple(user3.getId(), "Тестюзер3"));
     }
 
     @DisplayName("14. Проверка, что возвращается пользователь по ID.")

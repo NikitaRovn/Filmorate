@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
 import ru.yandex.practicum.filmorate.exception.friend.FriendNotFoundException;
 import ru.yandex.practicum.filmorate.exception.friendship.FriendshipNotFoundException;
-import ru.yandex.practicum.filmorate.exception.friendship.FriendshipPendingNotFoundException;
 import ru.yandex.practicum.filmorate.exception.genre.GenreNotFoundException;
 import ru.yandex.practicum.filmorate.exception.like.LikeFoundException;
 import ru.yandex.practicum.filmorate.exception.like.LikeNotFoundException;
@@ -14,7 +13,6 @@ import ru.yandex.practicum.filmorate.exception.mpa_rating.MpaRatingNotFoundExcep
 import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Friendship;
-import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 import ru.yandex.practicum.filmorate.model.User;
@@ -97,13 +95,13 @@ public class EntityValidator {
 
     public Friendship validateFriendshipExists(Long userId, Long friendId) {
         Friendship friendship = friendsRepository.findFriendship(userId, friendId);
-        if (friendship == null) throw new FriendshipNotFoundException(userId);
+        if (friendship == null) throw new FriendshipNotFoundException(friendId);
         return friendship;
     }
 
-    public Friendship validateFriendshipPendingExists(Long userId, Long friendId) {
+    public Friendship validateFriendshipNotExists(Long userId, Long friendId) {
         Friendship friendship = friendsRepository.findFriendship(userId, friendId);
-        if (friendship == null || !friendship.getFriendshipStatus().equals(FriendshipStatus.PENDING)) throw new FriendshipPendingNotFoundException(userId);
+        if (friendship != null) throw new FriendshipNotFoundException(friendId);
         return friendship;
     }
 }

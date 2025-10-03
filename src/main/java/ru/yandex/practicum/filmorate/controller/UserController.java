@@ -61,16 +61,11 @@ public class UserController {
 
     @PutMapping("/{id}/friends/{friendId}")
     public void sendUserFriendRequest(@PathVariable Long id, @PathVariable Long friendId) {
-        userService.sendUserFriendRequest(id, friendId);
-    }
-
-    @PatchMapping("/{id}/friends/{friendId}")
-    public void acceptUserFriendRequest(@PathVariable Long id, @PathVariable Long friendId) {
-        userService.acceptUserFriendRequest(id, friendId);
+        userService.addFriend(id, friendId);
     }
 
     @DeleteMapping("/{id}/friends/{friendId}")
     public void deleteUserFriend(@PathVariable Long id, @PathVariable Long friendId) {
-        userService.deleteUserFriend(id, friendId);
+        userService.removeFriend(id, friendId);
     }
 }

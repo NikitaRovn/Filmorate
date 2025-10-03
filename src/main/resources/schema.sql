@@ -62,7 +62,6 @@ CREATE TABLE IF NOT EXISTS friendships
 (
     user_id           BIGINT  NOT NULL,
     friend_id         BIGINT  NOT NULL,
-    friendship_status TINYINT NOT NULL,
     PRIMARY KEY (user_id, friend_id),
     FOREIGN KEY (user_id) REFERENCES users (id),
     FOREIGN KEY (friend_id) REFERENCES users (id)

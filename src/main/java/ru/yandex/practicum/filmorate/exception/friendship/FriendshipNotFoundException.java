@@ -8,6 +8,6 @@ public class FriendshipNotFoundException extends RuntimeException {
     private final List<ErrorResponse> errors;
 
     public FriendshipNotFoundException(Long id) {
-        this.errors = List.of(new ErrorResponse("friendship", "Дружбы у id: " + id + " не найдено."));
+        this.errors = List.of(new ErrorResponse("friendship", "Дружбы с id: " + id + " не найдено."));
     }
 }

@@ -12,5 +12,4 @@ public class Friendship {
 
     User user;
     User friend;
-    FriendshipStatus friendshipStatus;
 }
