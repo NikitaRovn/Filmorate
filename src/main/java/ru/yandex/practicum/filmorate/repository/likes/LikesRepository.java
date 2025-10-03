@@ -10,7 +10,7 @@ public interface LikesRepository {
 
     void deleteLike(Long filmId, Long userId);
 
-    UserFilmLike findLike(Long filmId, Long userId);
+    UserFilmLike findLike(Long userId, Long filmId);
 
     Set<Long> findLikesByFilmId(Long filmId);
 

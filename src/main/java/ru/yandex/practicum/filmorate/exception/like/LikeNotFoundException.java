@@ -10,6 +10,6 @@ public class LikeNotFoundException extends RuntimeException {
     private final List<ErrorResponse> errors;
 
     public LikeNotFoundException(Long id) {
-        this.errors = List.of(new ErrorResponse("genre", "Лайк фильму юзера с id: " + id + " не существует."));
+        this.errors = List.of(new ErrorResponse("like", "Лайк фильму юзера с id: " + id + " не существует."));
     }
 }

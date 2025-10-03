@@ -72,8 +72,7 @@ public class JdbcFilmRepository extends JdbcBaseRepository<Film> implements Film
 
         saveFilmGenres(id, film.getGenres());
 
-        film.setGenres(loadGenresForFilms(List.of(id)).getOrDefault(id, List.of()));
-        return film;
+        return findOneById(id);
     }
 
     @Override
@@ -107,10 +106,7 @@ public class JdbcFilmRepository extends JdbcBaseRepository<Film> implements Film
 
         saveFilmGenres(film.getId(), film.getGenres());
 
-        film.setGenres(loadGenresForFilms(List.of(film.getId()))
-                .getOrDefault(film.getId(), List.of()));
-
-        return film;
+        return findOneById(film.getId());
     }
 
     @Override
