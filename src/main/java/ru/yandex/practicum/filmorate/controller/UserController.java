@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -10,39 +11,36 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import ru.yandex.practicum.filmorate.dto.UserDto;
 import ru.yandex.practicum.filmorate.dto.UserRegisterDto;
 import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
-import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/users")
 public class UserController {
     private final UserService userService;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
-
     @GetMapping
-    public List<User> getAllUsers() {
+    public List<UserDto> getAllUsers() {
         return userService.getAllUsers();
     }
 
     @GetMapping("/{id}")
-    public User getUser(@PathVariable Long id) {
+    public UserDto getUser(@PathVariable Long id) {
         return userService.getUser(id);
     }
 
     @PostMapping
-    public User registerUser(@Valid @RequestBody UserRegisterDto userRegisterDto) {
+    public UserDto registerUser(@Valid @RequestBody UserRegisterDto userRegisterDto) {
         return userService.registerUser(userRegisterDto);
     }
 
     @PutMapping("/{id}")
-    public User updateUser(@Valid @RequestBody UserUpdateDto userUpdateDto, @PathVariable Long id) {
+    public UserDto updateUser(@Valid @RequestBody UserUpdateDto userUpdateDto, @PathVariable Long id) {
         return userService.updateUser(userUpdateDto, id);
     }
 
@@ -52,27 +50,22 @@ public class UserController {
     }
 
     @GetMapping("/{id}/friends")
-    public List<User> getUserFriends(@PathVariable Long id) {
+    public List<UserDto> getUserFriends(@PathVariable Long id) {
         return userService.getUserFriends(id);
     }
 
     @GetMapping("/{id}/friends/common/{otherId}")
-    public List<User> getMutualFriends(@PathVariable Long id, @PathVariable Long otherId) {
+    public List<UserDto> getMutualFriends(@PathVariable Long id, @PathVariable Long otherId) {
         return userService.getMutualFriends(id, otherId);
     }
 
     @PutMapping("/{id}/friends/{friendId}")
     public void sendUserFriendRequest(@PathVariable Long id, @PathVariable Long friendId) {
-        userService.sendUserFriendRequest(id, friendId);
-    }
-
-    @PatchMapping("/{id}/friends/{friendId}")
-    public void acceptUserFriendRequest(@PathVariable Long id, @PathVariable Long friendId) {
-        userService.acceptUserFriendRequest(id, friendId);
+        userService.addFriend(id, friendId);
     }
 
     @DeleteMapping("/{id}/friends/{friendId}")
     public void deleteUserFriend(@PathVariable Long id, @PathVariable Long friendId) {
-        userService.deleteUserFriend(id, friendId);
+        userService.removeFriend(id, friendId);
     }
 }

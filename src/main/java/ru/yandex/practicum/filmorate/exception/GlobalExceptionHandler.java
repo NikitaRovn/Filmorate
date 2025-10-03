@@ -11,6 +11,8 @@ import ru.yandex.practicum.filmorate.dto.ErrorResponse;
 import ru.yandex.practicum.filmorate.dto.ValidationErrorResponse;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
 import ru.yandex.practicum.filmorate.exception.friend.FriendNotFoundException;
+import ru.yandex.practicum.filmorate.exception.genre.GenreNotFoundException;
+import ru.yandex.practicum.filmorate.exception.mpa_rating.MpaRatingNotFoundException;
 import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 
 import java.time.LocalDateTime;
@@ -19,6 +21,36 @@ import java.util.List;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MpaRatingNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ValidationErrorResponse handleGenreNotFoundException(MpaRatingNotFoundException e, HttpServletRequest r) {
+        List<ErrorResponse> errors = e.getErrors().stream().toList();
+
+        return new ValidationErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                "МПА рейтинг не найден.",
+                r.getRequestURI(),
+                errors
+        );
+    }
+
+    @ExceptionHandler(GenreNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ValidationErrorResponse handleGenreNotFoundException(GenreNotFoundException e, HttpServletRequest r) {
+        List<ErrorResponse> errors = e.getErrors().stream().toList();
+
+        return new ValidationErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                "Жанр не найден.",
+                r.getRequestURI(),
+                errors
+        );
+    }
 
     @ExceptionHandler(UserNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)

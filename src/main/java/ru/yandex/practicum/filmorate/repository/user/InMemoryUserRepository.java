@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.repository.user;
 
-import org.springframework.context.annotation.Profile;
 import ru.yandex.practicum.filmorate.model.User;
 import org.springframework.stereotype.Repository;
 
@@ -10,14 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-@Repository
-@Profile("dev")
+@Repository("inMemoryUserRepository")
 public class InMemoryUserRepository implements UserRepository {
     private final Map<Long, User> users = new HashMap<>();
     private Long lastId = 1L;
 
     @Override
-    public User save(User user) {
+    public User insert(User user) {
         user.setId(lastId);
         users.put(lastId, user);
         lastId++;
@@ -25,12 +23,12 @@ public class InMemoryUserRepository implements UserRepository {
     }
 
     @Override
-    public User findById(Long id) {
+    public User findOneById(Long id) {
         return users.get(id);
     }
 
     @Override
-    public List<User> findByIds(List<Long> ids) {
+    public List<User> findManyByIds(List<Long> ids) {
         return ids.stream()
                 .map(users::get)
                 .filter(Objects::nonNull)
@@ -38,24 +36,24 @@ public class InMemoryUserRepository implements UserRepository {
     }
 
     @Override
-    public List<User> findAll() {
+    public List<User> findMany() {
         return new ArrayList<>(users.values());
     }
 
     @Override
-    public User update(User user) {
+    public int update(User user) {
         Long id = user.getId();
         users.put(id, user);
-        return users.get(id);
+        return 0;
     }
 
     @Override
-    public User deleteById(Long id) {
-        return users.remove(id);
+    public void deleteOneById(Long id) {
+        users.remove(id);
     }
 
     @Override
-    public void clear() {
+    public void cleanup() {
         users.clear();
         lastId = 1L;
     }

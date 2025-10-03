@@ -7,13 +7,13 @@ import java.util.List;
 public interface FilmRepository {
     Film save(Film film);
 
-    Film findById(Long id);
+    Film findOneById(Long id);
 
     List<Film> findAll();
 
     Film update(Film film);
 
-    Film deleteById(Long id);
+    int deleteOneById(Long id);
 
-    void clear();
+    void cleanup();
 }

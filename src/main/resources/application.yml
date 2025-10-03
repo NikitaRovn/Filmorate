@@ -1,6 +1,14 @@
 server:
-  port: 8081
+  port: 8082
 
 spring:
   profiles:
     active: dev
+  sql:
+    init:
+      mode: always
+  datasource:
+    url: jdbc:h2:file:./db/filmorate
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
