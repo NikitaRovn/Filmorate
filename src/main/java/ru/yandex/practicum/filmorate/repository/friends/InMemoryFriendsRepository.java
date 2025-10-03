@@ -30,6 +30,11 @@ public class InMemoryFriendsRepository implements FriendsRepository {
     }
 
     @Override
+    public Friendship findFriendship(Long userId, Long friendId) {
+        return null;
+    }
+
+    @Override
     public List<Friendship> findFriendshipsByUserId(Long userId) {
         return List.of();
     }

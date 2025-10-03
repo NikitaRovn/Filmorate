@@ -11,6 +11,8 @@ public interface FriendsRepository {
 
     void deleteFriendship(Long userId, Long friendId);
 
+    Friendship findFriendship(Long userId, Long friendId);
+
     List<Friendship> findFriendshipsByUserId(Long userId);
 
     void cleanup();

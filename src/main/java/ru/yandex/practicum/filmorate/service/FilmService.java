@@ -27,7 +27,7 @@ public class FilmService {
     private final GenreRepository genreRepository;
 
     public FilmService(@Qualifier("jdbcFilmRepository") FilmRepository filmRepository,
-                       @Qualifier("jdbcMemoryLikesRepository") LikesRepository likesRepository,
+                       @Qualifier("jdbcLikesRepository") LikesRepository likesRepository,
                        EntityValidator entityValidator,
                        GenreRepository genreRepository) {
         this.filmRepository = filmRepository;
@@ -84,7 +84,8 @@ public class FilmService {
 
         filmRepository.update(film);
         log.info(LogMessages.FILM_UPDATE_SUCCESS, id);
-        return FilmMapper.mapToFilmDto(film);
+        Film updated = filmRepository.findOneById(film.getId());
+        return FilmMapper.mapToFilmDto(updated);
     }
 
     public void deleteFilm(Long filmId) {
@@ -107,14 +108,19 @@ public class FilmService {
     public void addLike(Long filmId, Long userId) {
         entityValidator.validateFilmExists(filmId);
         entityValidator.validateUserExists(userId);
+        entityValidator.validateUserFilmLikeNotExists(filmId, userId);
         likesRepository.addLike(filmId, userId);
     }
 
     public void deleteLike(Long filmId, Long userId) {
+        entityValidator.validateFilmExists(filmId);
+        entityValidator.validateUserExists(userId);
+        entityValidator.validateUserFilmLikeExists(filmId, userId);
         likesRepository.deleteLike(filmId, userId);
     }
 
     public Set<Long> getLikes(Long filmId) {
+        entityValidator.validateFilmExists(filmId);
         return likesRepository.findLikesByFilmId(filmId);
     }
 }

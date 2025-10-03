@@ -126,7 +126,7 @@ public class JdbcFilmRepository extends JdbcBaseRepository<Film> implements Film
 
     void saveFilmGenres(Long filmId, List<Genre> genres) {
         genres = (genres == null) ? List.of() : genres;
-
+        
         jdbc.update("DELETE FROM film_genres WHERE film_id = ?", filmId);
 
         String sql = "INSERT INTO film_genres(film_id, genre_id, sort_order) VALUES (?, ?, ?)";

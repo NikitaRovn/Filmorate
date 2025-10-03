@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.repository.likes;
 
 import org.springframework.stereotype.Repository;
+import ru.yandex.practicum.filmorate.model.UserFilmLike;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -22,6 +23,11 @@ public class InMemoryLikesRepository implements LikesRepository {
     @Override
     public void deleteLike(Long filmId, Long userId) {
         likes.get(filmId).remove(userId);
+    }
+
+    @Override
+    public UserFilmLike findLike(Long filmId, Long userId) {
+        return null;
     }
 
     @Override

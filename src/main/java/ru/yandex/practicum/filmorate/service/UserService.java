@@ -9,6 +9,7 @@ import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
 import ru.yandex.practicum.filmorate.logging.LogMessages;
 import ru.yandex.practicum.filmorate.mapper.UserMapper;
 import ru.yandex.practicum.filmorate.model.Friendship;
+import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.repository.friends.FriendsRepository;
 import ru.yandex.practicum.filmorate.repository.user.UserRepository;
@@ -121,28 +122,28 @@ public class UserService {
     public void sendUserFriendRequest(Long userId, Long friendId) {
         entityValidator.validateUserExists(userId);
         entityValidator.validateUserExists(friendId);
-
         friendsRepository.sendFriendship(userId, friendId);
     }
 
     public void acceptUserFriendRequest(Long userId, Long friendId) {
         entityValidator.validateUserExists(userId);
         entityValidator.validateUserExists(friendId);
-
+        entityValidator.validateFriendshipPendingExists(userId, friendId);
         friendsRepository.acceptFriendship(userId, friendId);
     }
 
     public void deleteUserFriend(Long userId, Long friendId) {
         entityValidator.validateUserExists(userId);
         entityValidator.validateUserExists(friendId);
+        entityValidator.validateFriendshipExists(userId, friendId);
 
-        List<Friendship> friendships = friendsRepository.findFriendshipsByUserId(userId);
-
-        Set<Long> friendIds = friendships.stream()
-                .map(f -> f.getId().getFriendId())
-                .collect(Collectors.toSet());
-
-        entityValidator.validateFriendExists(friendIds, friendId);
+//        List<Friendship> friendships = friendsRepository.findFriendshipsByUserId(userId);
+//
+//        Set<Long> friendIds = friendships.stream()
+//                .map(f -> f.getId().getFriendId())
+//                .collect(Collectors.toSet());
+//
+//        entityValidator.validateFriendExists(friendIds, friendId);
 
         friendsRepository.deleteFriendship(userId, friendId);
     }
